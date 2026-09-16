@@ -24,7 +24,7 @@ later.
 | Tool | Why | Where |
 | --- | --- | --- |
 | Python 3.10+ | the backend | <https://www.python.org/downloads/windows/> (tick **Add python.exe to PATH**) |
-| Node 18+ | the web console | <https://nodejs.org/en/download> |
+| Node 20.19+ (22 or 24 LTS) | the web console | <https://nodejs.org/en/download> |
 | Git | cloning and pushing | <https://git-scm.com/download/win> |
 | Ollama (optional) | free local model | <https://ollama.com/download> |
 
@@ -420,7 +420,7 @@ Same steps, three differences: activation, path separators, and the Python
 command name.
 
 ```bash
-# prerequisites: python3.10+, node 18+, git. Optional: ollama.
+# prerequisites: python3.10+, node 20.19+, git. Optional: ollama.
 python3 --version && node --version && git --version
 
 # caches

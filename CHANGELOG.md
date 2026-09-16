@@ -10,9 +10,10 @@ you can read at a glance.
 - React and React DOM 19, upgraded together. Dependabot had opened them as
   two separate pull requests, and each one failed CI on its own because the
   two packages must share a version.
-- Vite 6.4.3. It closes the esbuild dev-server advisory that `npm audit`
-  reported (0 vulnerabilities now) and still runs on Node 18 and 20. Vite 7
-  and 8 need Node 20.19 or newer, so that upgrade waits for a Node update.
+- Vite 8 with `@vitejs/plugin-react` 6, which closes the esbuild dev-server
+  advisory `npm audit` reported (0 vulnerabilities now). The console build
+  now needs Node 20.19 or newer: `engines` says so, CI builds on Node 22, and
+  the Docker image builds on `node:22-alpine`.
 - `.github/dependabot.yml` groups `react` with `react-dom`, `vite` with
   `@vitejs/*`, and all GitHub Actions, so packages that must move together
   arrive in one pull request.

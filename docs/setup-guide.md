@@ -1,7 +1,7 @@
 # Setup guide
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-20.19%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white)](https://git-scm.com)
 [![Ollama](https://img.shields.io/badge/Ollama-optional-000000?logo=ollama&logoColor=white)](https://ollama.com/download)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
@@ -31,7 +31,7 @@ Every step after the first run is optional. The numbers match the sections below
 ## 1. What you need
 
 - Python 3.10 or newer (`python --version`)
-- Node 18 or newer for the console (`node --version`)
+- Node 20.19 or newer for the console (22 LTS or 24 LTS recommended) (`node --version`)
 - git
 - Optional but recommended: [Ollama](https://ollama.com/download) for real
   local answers at zero cost

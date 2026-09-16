@@ -1,5 +1,5 @@
 # Stage 1: build the React console
-FROM node:20-alpine AS console
+FROM node:22-alpine AS console
 WORKDIR /console
 COPY frontend/package.json frontend/package-lock.json frontend/vite.config.js frontend/index.html ./
 COPY frontend/src ./src
