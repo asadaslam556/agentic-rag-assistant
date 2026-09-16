@@ -1,0 +1,39 @@
+{
+  "products": [
+    {
+      "sku": "ATLAS-P2",
+      "name": "Atlas P2 autonomous mobile robot",
+      "category": "AMR",
+      "list_price_eur": 38500,
+      "lease_eur_month": 1190,
+      "payload_kg": 450,
+      "runtime_hours": 14,
+      "status": "active",
+      "notes": "Current flagship platform, ships with Hive fleet software"
+    },
+    {
+      "sku": "ATLAS-P1",
+      "name": "Atlas P1",
+      "category": "AMR",
+      "list_price_eur": 24900,
+      "payload_kg": 250,
+      "runtime_hours": 10,
+      "status": "end-of-sale",
+      "notes": "Legacy platform, supported until December 2027"
+    },
+    {
+      "sku": "HIVE-SW",
+      "name": "Atlas Hive fleet management software",
+      "category": "software",
+      "list_price_eur": 0,
+      "status": "active",
+      "notes": "Included in Growth and Scale plans, per-robot licensing"
+    }
+  ],
+  "company_metrics": {
+    "robots_deployed": 1850,
+    "customer_sites": 92,
+    "average_fleet_uptime_percent": 99.6,
+    "employees": 240
+  }
+}

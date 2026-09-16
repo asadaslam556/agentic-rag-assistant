@@ -1,0 +1,8 @@
+{"id": "payload", "question": "What is the payload capacity of the Atlas P2?", "expected_substrings": ["450"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "runtime", "question": "How long does the Atlas P2 run on a single charge?", "expected_substrings": ["14"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "scale-price", "question": "What does the Scale plan cost per robot per month?", "expected_substrings": ["649"], "category": "structured-lookup", "difficulty": "medium", "expected_tools": ["knowledge_base"]}
+{"id": "founding", "question": "When was Auralis Dynamics founded and where?", "expected_substrings": ["2019", "Munich"], "category": "multi-fact", "difficulty": "medium", "expected_tools": ["vector_search"]}
+{"id": "safety-standard", "question": "Which safety standard does the Atlas platform comply with?", "expected_substrings": ["3691"], "category": "document-fact", "difficulty": "medium", "expected_tools": ["vector_search"]}
+{"id": "arithmetic", "question": "What is 23 * 649?", "expected_substrings": ["14,927"], "category": "calculation", "difficulty": "medium", "expected_tools": ["calculator"]}
+{"id": "fleet-size", "question": "How many robots does Auralis have deployed?", "expected_substrings": ["1,850"], "category": "structured-lookup", "difficulty": "medium", "expected_tools": ["knowledge_base"]}
+{"id": "deployment-time", "question": "How long does a typical Atlas deployment take?", "expected_substrings": ["2 to 6 weeks"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}

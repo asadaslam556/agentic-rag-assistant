@@ -1,0 +1,18 @@
+# Core runtime (the offline demo itself needs only numpy + dotenv)
+numpy>=1.26
+python-dotenv>=1.0
+httpx>=0.27          # HTTP client for real LLM providers and Tavily
+pypdf>=4.0           # PDF ingestion
+fastapi>=0.110       # REST API behind the web console (rag serve)
+uvicorn>=0.29        # ASGI server for the API
+ddgs>=6.0            # keyless DuckDuckGo web search (default SEARCH_PROVIDER)
+python-multipart>=0.0.9  # multipart parsing for the /api/upload endpoint
+cryptography>=3.1   # AES-encrypted PDFs, common in corporate documents
+fontTools>=4.0       # quiets pypdf's CFF font-encoding warnings, improves glyph fidelity on some corporate PDFs
+
+# Optional extras (install as needed):
+#   pip install sentence-transformers   -> stronger local embeddings (EMBEDDINGS_PROVIDER=sbert)
+#                                       -> also multilingual embeddings (EMBEDDINGS_PROVIDER=multilingual,
+#                                          downloads intfloat/multilingual-e5-small, about 470 MB, on first use)
+#   pip install pytest ruff             -> tests and linting (or: pip install -e ".[dev]")
+# The web console under frontend/ is a separate npm project (see docs/setup-guide.md).

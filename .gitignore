@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Secrets and local configuration. .env.example is the template to commit.
+.env
+.env.*
+!.env.example
+
+# Runtime state: the vector index, the graph, uploads, eval reports
+storage/
+*.log
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editors, assistants, and OS noise
+.vscode/
+.idea/
+.claude/
+CLAUDE.md
+.DS_Store
+Thumbs.db
+
+# Sample PDFs: only the files the project generates or may redistribute are
+# committed. Third-party reports dropped in locally for testing stay local.
+data/sample_pdfs/*
+!data/sample_pdfs/auralis-quarterly-review.pdf
+!data/sample_pdfs/udhr-german.pdf
+!data/sample_pdfs/udhr-chinese.pdf
+data/_*/

@@ -1,0 +1,17 @@
+[
+  {
+    "query_contains": "warehouse robotics market",
+    "results": [
+      {
+        "title": "Warehouse robotics market brief",
+        "url": "https://example.com/market-brief",
+        "content": "Industry analysts expect the warehouse robotics market to grow past 25 billion USD by 2027, driven by labour shortages and same-day delivery expectations."
+      },
+      {
+        "title": "AMR adoption in European logistics",
+        "url": "https://example.com/amr-europe",
+        "content": "European third-party logistics providers doubled their autonomous mobile robot fleets between 2023 and 2025, with food and fashion warehouses leading adoption."
+      }
+    ]
+  }
+]

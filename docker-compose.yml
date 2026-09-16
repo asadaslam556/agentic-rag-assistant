@@ -1,0 +1,28 @@
+services:
+  agentic-rag:
+    build:
+      context: .
+      args:
+        # "[multilingual]" adds sentence-transformers (large, pulls in torch)
+        EXTRAS: ""
+    ports:
+      - "8000:8000"
+    environment:
+      # reach an Ollama server running on the host machine
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      # uncomment before exposing the port beyond localhost:
+      # API_AUTH_TOKEN: change-me
+    # To use your own provider keys, uncomment this. Settings in .env win over
+    # the defaults, so if it sets EMBEDDINGS_PROVIDER=multilingual, also set
+    # EXTRAS above and run `rag reindex` inside the container once.
+    # env_file:
+    #   - .env
+    volumes:
+      # the index, graph, and uploads survive rebuilds and restarts
+      - rag-storage:/app/storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # host networking on Linux
+    restart: unless-stopped
+
+volumes:
+  rag-storage:

@@ -1,0 +1,8 @@
+{"id": "udhr-de-slavery", "question": "Was sagt die Erklaerung ueber Sklaverei und Sklavenhandel?", "expected_substrings": ["Sklaverei"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "udhr-de-education", "question": "Welches Recht auf Bildung und Grundschulunterricht wird genannt?", "expected_substrings": ["Bildung"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "atlas-ar-payload", "question": "ما هي قدرة الحمولة لمنصة أطلس بي 2؟", "expected_substrings": ["450"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "udhr-zh-article1", "question": "世界人权宣言第一条关于自由和平等说了什么？", "expected_substrings": ["自 由"], "category": "document-fact", "difficulty": "medium", "expected_tools": ["vector_search"]}
+{"id": "siemens-book-to-bill", "question": "What was the equipment book-to-bill ratio for Siemens Healthineers?", "expected_substrings": ["1.27"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "sap-cloud-growth", "question": "What was SAP cloud revenue growth at constant currencies in Q1 2024?", "expected_substrings": ["25"], "category": "document-fact", "difficulty": "medium", "expected_tools": ["vector_search"]}
+{"id": "atlas-ar-safety", "question": "ما هو معيار السلامة لمنصة أطلس؟", "expected_substrings": ["3691"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "atlas-ar-runtime", "question": "كم تبلغ مدة تشغيل منصة أطلس بي 2؟", "expected_substrings": ["14"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}

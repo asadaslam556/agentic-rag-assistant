@@ -1,0 +1,32 @@
+# Everything the image builds for itself or must never contain
+.git
+.github
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Local runtime state and secrets
+storage
+.env
+
+# Rebuilt inside the image
+frontend/node_modules
+frontend/dist
+
+# Docs and editor files add nothing to the runtime image
+docs
+.vscode
+.claude
+*.md
+!README.md
+
+# The image only ingests data/sample_docs at build time. Local PDFs and
+# scratch folders would add tens of megabytes to every build context.
+data/sample_pdfs
+data/_*
+*.log

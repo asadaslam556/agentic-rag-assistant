@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-rag-assistant"
+version = "3.12.0"
+description = "Agentic RAG knowledge assistant: plans tool use, retrieves evidence, verifies claims, and answers with citations."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Asad Aslam" }]
+keywords = ["rag", "agents", "llm", "retrieval", "verification", "citations"]
+dependencies = [
+  "numpy>=1.26",
+  "python-dotenv>=1.0",
+  "httpx>=0.27",
+  "pypdf>=4.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "ddgs>=6.0",
+  "python-multipart>=0.0.9",
+  "cryptography>=3.1",
+  "fontTools>=4.0",
+]
+
+[project.optional-dependencies]
+# page-image understanding for PDFs whose charts and tables the text misses
+vision = ["pypdfium2>=4.30", "pillow>=10.0"]
+# page-image retrieval with a ColPali-family model. Large: pulls in torch
+colpali = ["pypdfium2>=4.30", "pillow>=10.0", "colpali-engine>=0.3.8", "torch>=2.2"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+sbert = ["sentence-transformers>=2.6"]
+# multilingual embeddings (EMBEDDINGS_PROVIDER=multilingual). Same package as
+# sbert, listed separately so the intent is obvious in install instructions
+multilingual = ["sentence-transformers>=2.6"]
+# optional graph backend; the default SQLite store needs nothing
+neo4j = ["neo4j>=5.0"]
+
+[project.urls]
+Homepage = "https://github.com/asadaslam556/agentic-rag-assistant"
+Repository = "https://github.com/asadaslam556/agentic-rag-assistant"
+Issues = "https://github.com/asadaslam556/agentic-rag-assistant/issues"
+Changelog = "https://github.com/asadaslam556/agentic-rag-assistant/blob/main/CHANGELOG.md"
+
+[project.scripts]
+rag = "agentic_rag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# lets `pytest` work straight from a clone, before `pip install -e .`
+pythonpath = ["src"]

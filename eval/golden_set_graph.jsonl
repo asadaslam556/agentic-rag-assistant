@@ -1,0 +1,4 @@
+{"id": "multi-hop-standard", "question": "Which safety standard applies to the robot made by the company headquartered in Munich?", "expected_substrings": ["3691"], "category": "multi-hop", "difficulty": "hard", "expected_tools": ["graph_search"]}
+{"id": "maker-of-atlas", "question": "Which company makes the Atlas P2?", "expected_substrings": ["Auralis"], "category": "relational", "difficulty": "easy", "expected_tools": ["graph_search"]}
+{"id": "maker-and-location", "question": "Who makes the Atlas P2 and where are they based?", "expected_substrings": ["Auralis"], "category": "multi-hop", "difficulty": "medium", "expected_tools": ["graph_search"]}
+{"id": "maker-of-certified-robot", "question": "Who makes the robot that complies with ISO 3691-4:2023?", "expected_substrings": ["3691"], "category": "relational", "difficulty": "medium", "expected_tools": ["graph_search"]}
