@@ -50,8 +50,8 @@ class GraphRunner:
 
     def _run_branch(self, state: BranchState, budget: BudgetTracker, emit) -> BranchState:
         def on_step(step: AgentStep) -> None:
+            step.branch = state.index
             payload = asdict(step)
-            payload["branch"] = state.index
             emit("step", payload)
 
         try:
@@ -66,8 +66,13 @@ class GraphRunner:
             emit("branch_error", {"branch": state.index, "message": state.error})
         return state
 
-    def _fan_out(self, questions: list[str], budget: BudgetTracker, emit) -> list[BranchState]:
-        states = [BranchState(index=i, question=q) for i, q in enumerate(questions)]
+    def _fan_out(
+        self, questions: list[str], budget: BudgetTracker, emit, indices: list[int] | None = None
+    ) -> list[BranchState]:
+        # a retry keeps the index of the branch it stands in for, so its steps
+        # are reported under the same part of the question
+        indices = indices if indices is not None else list(range(len(questions)))
+        states = [BranchState(index=i, question=q) for i, q in zip(indices, questions, strict=True)]
         if len(states) == 1:
             return [self._run_branch(states[0], budget, emit)]
         workers = min(len(states), max(1, self.settings.max_branches))
@@ -80,6 +85,8 @@ class GraphRunner:
         steps: list[AgentStep] = []
         for state in states:
             evidence.extend(state.evidence)
+            for step in state.steps:
+                step.branch = state.index
             steps.extend(state.steps)
         return evidence, steps
 
@@ -100,7 +107,9 @@ class GraphRunner:
         gaps = [s for s in states if not s.evidence and not s.error]
         if len(states) > 1 and gaps and budget.remaining > 0:
             emit("stage", {"name": "retrying"})
-            retried = self._fan_out([s.question for s in gaps], budget, emit)
+            retried = self._fan_out(
+                [s.question for s in gaps], budget, emit, indices=[s.index for s in gaps]
+            )
             for original, retry in zip(gaps, retried, strict=False):
                 original.evidence = retry.evidence
                 original.steps.extend(retry.steps)

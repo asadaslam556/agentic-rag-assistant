@@ -24,10 +24,12 @@ from agentic_rag.core.textutils import content_tokens, split_sentences
 from agentic_rag.core.types import INSUFFICIENT_ANSWER
 from agentic_rag.llm.base import LLMClient, LLMResponse
 
-_MATH = re.compile(r"\d[\d\s.,]*[+\-*/x×][\d\s.,()+\-*/x×%]*\d")
+# Repetitions are bounded: an arithmetic question is short, and unbounded
+# classes here backtrack quadratically on long runs of digits.
+_MATH = re.compile(r"\d[\d\s.,]{0,40}[+\-*/x×][\d\s.,()+\-*/x×%]{0,80}\d")
 # "12% of 4000". safe_eval reads % as modulo, so this is rewritten rather
 # than passed through.
-_PERCENT_OF = re.compile(r"(\d[\d.,]*)\s*%\s*of\s+(\d[\d.,]*)", re.IGNORECASE)
+_PERCENT_OF = re.compile(r"(\d[\d.,]{0,20})\s{0,3}%\s{0,3}of\s{1,3}(\d[\d.,]{0,20})", re.IGNORECASE)
 # Words that introduce an identifier rather than a sum, so the digits after
 # them are a name.
 _IDENTIFIER_WORDS = frozenset(
@@ -164,10 +166,11 @@ class MockLLM(LLMClient):
         section = prompt.split("SOURCES:", 1)[-1]
         section = section.split("\nEND OF SOURCES")[0]
         for block in section.split("\n---\n"):
-            block = block.strip()
-            match = re.match(r"\[(\d+)\]\s.*?\n(.*)", block, flags=re.S)
-            if match:
-                sources.append((int(match.group(1)), match.group(2).strip()))
+            # each block is "[n] title :: ref" on the first line, then the text
+            header, _, body = block.strip().partition("\n")
+            match = re.match(r"\[(\d+)\]\s", header)
+            if match and body:
+                sources.append((int(match.group(1)), body.strip()))
         return sources
 
     def _synthesize(self, prompt: str) -> str:

@@ -82,6 +82,8 @@ class AgentStep:
     action: str
     action_input: dict[str, Any]
     observation: str
+    # which parallel branch took the step; 0 when the question was not split
+    branch: int = 0
 
 
 @dataclass

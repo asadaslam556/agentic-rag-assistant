@@ -1,7 +1,7 @@
 # Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-232%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
+[![Tests](https://img.shields.io/badge/tests-235%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
 [![Eval](https://img.shields.io/badge/eval-8%2F8%20golden%20set-brightgreen)](eval/golden_set.jsonl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -39,8 +39,8 @@
 [![Offline](https://img.shields.io/badge/runs%20offline-no%20keys%20needed-success)](#quick-start)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/console-dark.png">
-  <img alt="The web console: a conversation with two cited, verified answers, the chat history sidebar, and the theme switch" src="docs/console-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
+  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
 </picture>
 
 A retrieval-augmented assistant that does not just search and summarise. You chat with it: an agent decides which tools to call, researches the independent parts of a question at the same time, streams a cited answer token by token, then checks every claim against the sources before the turn is marked done. When the evidence is not there, it says so.
@@ -455,7 +455,7 @@ Scale plan cost: EUR 649 per robot per month, billed annually. [1]
   average relevance (judge): 85%
 ```
 
-The 85% relevance is the honest reading of extractive answers: they carry supporting detail beyond the literal question words, and the lexical scorer counts that against them. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 232-test suite on two Python versions, and a full console build, all without secrets.
+The 85% relevance is the honest reading of extractive answers: they carry supporting detail beyond the literal question words, and the lexical scorer counts that against them. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 235-test suite on two Python versions, and a full console build, all without secrets.
 
 The default golden set covers the English sample documents, which is what CI runs. `eval/golden_set_multilingual.jsonl` covers the expanded corpus with German, Arabic, Chinese, and English questions, and needs the PDFs and multilingual documents ingested first:
 
@@ -493,6 +493,7 @@ Copy `.env.example` to `.env`. Every setting is documented there.
 | `VERIFIER_MODE` | `auto`, `lexical`, `llm` | `auto` picks lexical for the mock, model verification otherwise |
 | `API_AUTH_TOKEN` | string | Empty keeps the local API open, set it before exposing the server |
 | `UPLOAD_MAX_MB` | int | Per-file cap for console uploads |
+| `INGEST_ROOTS` | folders | Where `/api/ingest` may read, default `data`. The CLI is not limited |
 
 Switching embedders invalidates the index on purpose: the store records which embedder built it and refuses mixed vectors. Run `rag reindex` to rebuild from the chunks already stored, or `rag reset --yes` and re-ingest from the source files.
 
@@ -658,7 +659,7 @@ agentic-rag-assistant/
   docs/                    # architecture, deployment, setup guide, command reference, screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
-  tests/                   # 232 tests, offline by design
+  tests/                   # 235 tests, offline by design
   .github/                 # CI, dependabot, templates
 ```
 
@@ -708,7 +709,7 @@ Local-first by default: no telemetry, and with Ollama nothing leaves your machin
 ## Development
 
 ```bash
-pytest                  # 232 tests, all offline
+pytest                  # 235 tests, all offline
 ruff check src tests    # lint
 rag eval                # golden set, non-zero exit on regression
 rag eval --judge        # adds faithfulness and relevance

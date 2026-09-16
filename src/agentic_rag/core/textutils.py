@@ -31,7 +31,9 @@ from agentic_rag.core.lang import (
     stopwords_for,
 )
 
-_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
+# split_sentences collapses whitespace to single spaces first, so matching
+# exactly one space is equivalent and keeps the pattern free of backtracking
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?]) (?=[A-Z0-9\"'(\[])")
 
 # Kept under the name other modules already import. It is the English list,
 # which is what it has always held.

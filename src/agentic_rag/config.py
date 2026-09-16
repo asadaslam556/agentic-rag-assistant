@@ -197,6 +197,8 @@ class Settings:
     neo4j_database: str = ""
     api_auth_token: str = ""  # empty = open local API; set to require Bearer auth
     upload_max_mb: int = 25
+    # folders /api/ingest may read, comma separated; the CLI is not limited
+    ingest_roots: str = "data"
 
     @property
     def storage_path(self) -> Path:
@@ -307,4 +309,5 @@ class Settings:
             neo4j_database=_env("NEO4J_DATABASE"),
             api_auth_token=_env("API_AUTH_TOKEN"),
             upload_max_mb=_env_int("UPLOAD_MAX_MB", 25),
+            ingest_roots=_env("INGEST_ROOTS", "data"),
         )

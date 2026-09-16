@@ -16,13 +16,17 @@ way to add documents.
 from __future__ import annotations
 
 import json
+import logging
+import os
 import queue
+import re
 import threading
 from pathlib import Path
 
 from agentic_rag import __version__
 from agentic_rag.config import Settings
 from agentic_rag.ingestion.loaders import SUPPORTED_EXTENSIONS
+from agentic_rag.llm.providers import ProviderError
 from agentic_rag.pipeline import AgenticRAG
 
 # FastAPI resolves endpoint annotations against this module's globals. With
@@ -42,6 +46,25 @@ except ImportError as exc:  # pragma: no cover
     raise RuntimeError("The API needs fastapi installed: pip install fastapi uvicorn") from exc
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+log = logging.getLogger("agentic_rag.api")
+_UNSAFE_FILENAME = re.compile(r"[^\w.\- ]")
+
+
+def _inside(root: str, candidate: str) -> bool:
+    """True when candidate is root itself or somewhere below it, after
+    resolving symlinks and `..`, so a path cannot climb out of an allowed
+    folder."""
+    root_real = os.path.realpath(root)
+    candidate_real = os.path.realpath(candidate)
+    return candidate_real == root_real or candidate_real.startswith(root_real + os.sep)
+
+
+def _safe_filename(raw: str) -> str:
+    """A bare file name with no directory parts and no unusual characters."""
+    name = os.path.basename((raw or "").replace("\\", "/")).strip()
+    name = _UNSAFE_FILENAME.sub("_", name).lstrip(".")
+    return name[:120] or "upload"
 
 
 class ChatRequest(BaseModel):
@@ -161,9 +184,11 @@ def create_app(pipeline: AgenticRAG | None = None):
                 "status": "ok",
                 "detail": f"{chunk_count} chunks, retrieval mode {rag.settings.retrieval_mode}",
             }
-        except Exception as exc:
+        except Exception:
+            # the full error goes to the server log, not to whoever calls /api/health
+            log.exception("health check could not read the index")
             chunk_count = 0
-            components["index"] = {"status": "down", "detail": str(exc)[:200]}
+            components["index"] = {"status": "down", "detail": "the index could not be read, see the server log"}
 
         catalog = Path(rag.settings.catalog_path)
         if catalog.exists():
@@ -240,8 +265,12 @@ def create_app(pipeline: AgenticRAG | None = None):
             try:
                 answer = rag.chat(request.question, history=request.history, on_event=emit)
                 events.put(("answer", _public_answer(answer)))
-            except Exception as exc:  # surfaced to the client as an error event
+            except ProviderError as exc:
+                # setup problems carry their own readable fix, safe to show
                 events.put(("error", {"message": str(exc)[:500]}))
+            except Exception:
+                log.exception("streamed chat failed")
+                events.put(("error", {"message": "The pipeline failed. Details are in the server log."}))
             finally:
                 events.put(None)
 
@@ -280,10 +309,22 @@ def create_app(pipeline: AgenticRAG | None = None):
 
     @app.post("/api/ingest", dependencies=protected)
     def ingest(request: IngestRequest) -> dict:
-        path = Path(request.path)
-        if not path.exists():
-            raise HTTPException(status_code=404, detail=f"Path not found: {request.path}")
-        return rag.ingest(path)
+        # Only folders listed in INGEST_ROOTS (and the uploads folder) can be
+        # read through the API. A missing path and a forbidden one get the same
+        # answer, so the endpoint cannot be used to probe the server's disk.
+        roots = [root.strip() for root in rag.settings.ingest_roots.split(",") if root.strip()]
+        roots.append(str(rag.settings.storage_path / "uploads"))
+        requested = os.path.realpath(request.path)
+        if not any(_inside(root, requested) for root in roots) or not os.path.exists(requested):
+            raise HTTPException(
+                status_code=404,
+                detail="Path not found, or outside the folders the API may ingest (INGEST_ROOTS).",
+            )
+        stats = rag.ingest(Path(requested))
+        for error in stats.get("errors", []):
+            log.warning("ingest skipped %s: %s", error["file"], error["error"])
+            error["error"] = "could not be read, see the server log"
+        return stats
 
     @app.post("/api/upload", dependencies=protected)
     async def upload(files: list[UploadFile] = _UPLOAD_FILES) -> dict:
@@ -292,8 +333,9 @@ def create_app(pipeline: AgenticRAG | None = None):
         upload_dir.mkdir(parents=True, exist_ok=True)
         results: list[dict] = []
         saved: list[Path] = []
+        upload_root = str(upload_dir)
         for file in files:
-            name = Path(file.filename or "upload").name
+            name = _safe_filename(file.filename or "upload")
             suffix = Path(name).suffix.lower()
             if suffix not in SUPPORTED_EXTENSIONS:
                 results.append(
@@ -309,6 +351,9 @@ def create_app(pipeline: AgenticRAG | None = None):
             while target.exists():
                 target = upload_dir / f"{stem}-{counter}{suffix}"
                 counter += 1
+            if not _inside(upload_root, str(target)):
+                results.append({"file": name, "status": "rejected", "detail": "invalid file name"})
+                continue
             size = 0
             too_big = False
             with target.open("wb") as out:

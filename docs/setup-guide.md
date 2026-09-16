@@ -76,7 +76,7 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 232 tests, all offline
+pytest                        # 235 tests, all offline
 ruff check src tests          # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 8/8 expected
@@ -217,7 +217,7 @@ cd frontend; npm run build; cd ..
 rag serve                     # console + API together on http://localhost:8000
 ```
 
-![The console with a verified, cited answer](console-light.png)
+![The console with a verified, cited answer and its reasoning steps](dashboard-light.png)
 
 What to try in it:
 

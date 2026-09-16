@@ -161,6 +161,8 @@ def test_branches_run_at_the_same_time(monkeypatch=None):
     assert [name for name, _ in events][0] == "decompose"
     branch_ids = {payload["branch"] for name, payload in events if name == "step"}
     assert branch_ids == {0, 1}, "each step must say which branch produced it"
+    # the saved answer keeps the same tags, not only the live events
+    assert {step.branch for step in result.steps} == {0, 1}
 
 
 def test_single_question_keeps_the_original_event_order():

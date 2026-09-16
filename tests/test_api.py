@@ -216,3 +216,55 @@ def test_fastapi_stays_off_the_core_import_path():
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "False", "fastapi leaked onto the core import path"
+
+
+def _client_with_ingest_root(tmp_path, allowed):
+    settings = Settings(
+        llm_provider="mock",
+        embeddings_provider="local",
+        search_provider="none",
+        storage_dir=str(tmp_path / "storage"),
+        catalog_path=str(ROOT / "data" / "structured" / "catalog.json"),
+        ingest_roots=str(allowed),
+    )
+    return TestClient(create_app(AgenticRAG(settings)))
+
+
+def test_ingest_only_reads_the_allowed_folders(tmp_path):
+    allowed = tmp_path / "allowed"
+    secret = tmp_path / "secret"
+    allowed.mkdir()
+    secret.mkdir()
+    (allowed / "notes.md").write_text("# Notes\n\nThe depot opens at six.", encoding="utf-8")
+    (secret / "private.md").write_text("# Private\n\nNot for the API.", encoding="utf-8")
+    client = _client_with_ingest_root(tmp_path, allowed)
+
+    assert client.post("/api/ingest", json={"path": str(allowed)}).status_code == 200
+    # outside the root, directly or by climbing out of it, looks exactly like a missing path
+    assert client.post("/api/ingest", json={"path": str(secret)}).status_code == 404
+    escape = client.post("/api/ingest", json={"path": str(allowed / ".." / "secret")})
+    assert escape.status_code == 404
+    assert "secret" not in escape.json()["detail"]
+
+
+def test_upload_drops_directory_parts_from_file_names(client):
+    if not _multipart_available():
+        pytest.skip("python-multipart not installed")
+    files = [("files", ("../../escape.md", b"# Escape\n\nStays in the uploads folder.", "text/markdown"))]
+    payload = client.post("/api/upload", files=files).json()
+    entry = payload["results"][0]
+    assert entry["status"] == "saved"
+    assert entry["stored_as"] == "escape.md"
+
+
+def test_text_patterns_stay_fast_on_hostile_input():
+    import time
+
+    from agentic_rag.core.textutils import split_sentences
+    from agentic_rag.llm.mock import extract_expression
+
+    started = time.perf_counter()
+    extract_expression("1" * 20000 + " apples")
+    extract_expression("5" * 20000 + " % " + "9" * 20000)
+    split_sentences(". " * 20000)
+    assert time.perf_counter() - started < 2.0

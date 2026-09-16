@@ -8,6 +8,7 @@ key, the model, and any extra headers the endpoint needs.
 from __future__ import annotations
 
 import base64
+from urllib.parse import urlparse
 
 from agentic_rag.config import Settings
 from agentic_rag.core.http import HttpError, post_json, post_sse
@@ -48,7 +49,8 @@ class OpenAICompatClient(LLMClient):
             self.model = settings.azure_openai_deployment
             self.name = f"azure:{self.model}"
         else:
-            if not settings.openai_api_key and "api.openai.com" in settings.openai_base_url:
+            host = urlparse(settings.openai_base_url).hostname or ""
+            if not settings.openai_api_key and host == "api.openai.com":
                 raise ProviderError(
                     "LLM_PROVIDER=openai requires OPENAI_API_KEY. Put it in .env, or point "
                     "OPENAI_BASE_URL at a local endpoint that does not need a key."

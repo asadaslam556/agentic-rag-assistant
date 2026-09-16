@@ -587,7 +587,7 @@ Start it with `rag serve`. Interactive docs at <http://localhost:8000/docs>.
 | `/api/chat` | POST | Ask a question, optionally with history. Returns the full answer payload |
 | `/api/chat/stream` | POST | Same body, answers as server-sent events |
 | `/api/ask` | POST | One-shot question, kept for older clients |
-| `/api/ingest` | POST | Index a path on the server machine |
+| `/api/ingest` | POST | Index a folder on the server, limited to `INGEST_ROOTS` (default `data`) |
 | `/api/upload` | POST | Upload documents and index them, the remote-safe way to add files |
 | `/api/page-image` | GET | Fetch a rendered page by `page_id`, used by citations that point at a page |
 

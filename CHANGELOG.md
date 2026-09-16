@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.13.0
+
+Fixes for everything GitHub's CodeQL scan flagged on the first public push,
+plus a bug that showed up while taking the new README screenshot.
+
+### Security
+
+- **`/api/ingest` only reads allowed folders.** It used to index any path on
+  the server it was given. Paths are now resolved (so `..` and symlinks
+  cannot climb out) and must sit under `INGEST_ROOTS`, default `data`, or the
+  uploads folder. A forbidden path returns the same 404 as a missing one, so
+  the endpoint cannot be used to probe the disk. `rag ingest` on the CLI is
+  unchanged.
+- **Upload names are sanitised properly.** Directory parts and unusual
+  characters are stripped, and the final path is checked to be inside the
+  uploads folder before anything is written.
+- **Exception details stay on the server.** `/api/health`, the chat stream,
+  and ingest errors now log the full error and send the client a short
+  generic message. Provider setup errors still come through, because they
+  carry the fix the user needs.
+- **No regex backtracking on hostile input.** The sentence splitter matches
+  a single space (whitespace is collapsed first, so results are identical),
+  the mock's arithmetic and percentage patterns have bounded repetitions, and
+  the mock's source parser no longer uses a lazy multiline pattern.
+- **The OpenAI key check compares the host.** It used a substring test, which
+  `api.openai.com.example.net` would have passed.
+- **CI runs with read-only repository permissions.**
+- Three regression tests cover the ingest boundary, upload names, and the
+  patterns on long adversarial input. Suite: 232 to 235.
+
+### Fixed: steps lost their branch in the saved answer
+
+Live `step` events said which part of a split question produced them, but
+the steps in the final answer did not, so the evidence drawer labelled every
+step "part 1". `AgentStep` now carries `branch`, and a retried branch keeps
+the number of the branch it replaces.
+
+### Docs
+
+- New README screenshot from a real run on Claude: a question split into
+  two parts, cited and verified answers, and the reasoning view, in light
+  and dark versions that follow the reader's GitHub theme.
+- `INGEST_ROOTS` in the README configuration table, `.env.example`, the API
+  reference, and `SECURITY.md`.
+
 ## 3.12.0
 
 Dependency housekeeping after the first push to GitHub, and documentation
