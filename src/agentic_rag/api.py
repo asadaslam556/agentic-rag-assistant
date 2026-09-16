@@ -9,8 +9,8 @@ Security model: this is a local-first tool. The API is open by default
 on localhost. Setting API_AUTH_TOKEN requires `Authorization: Bearer
 <token>` on every endpoint except /api/health, which is the switch to
 flip before exposing the server beyond your machine. /api/ingest reads
-paths on the server machine by design; /api/upload is the remote-safe
-way to add documents.
+folders on the server, limited to INGEST_ROOTS and the uploads folder;
+/api/upload is the remote-safe way to add documents.
 """
 
 from __future__ import annotations
@@ -49,15 +49,6 @@ FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 log = logging.getLogger("agentic_rag.api")
 _UNSAFE_FILENAME = re.compile(r"[^\w.\- ]")
-
-
-def _inside(root: str, candidate: str) -> bool:
-    """True when candidate is root itself or somewhere below it, after
-    resolving symlinks and `..`, so a path cannot climb out of an allowed
-    folder."""
-    root_real = os.path.realpath(root)
-    candidate_real = os.path.realpath(candidate)
-    return candidate_real == root_real or candidate_real.startswith(root_real + os.sep)
 
 
 def _safe_filename(raw: str) -> str:
@@ -315,16 +306,23 @@ def create_app(pipeline: AgenticRAG | None = None):
         roots = [root.strip() for root in rag.settings.ingest_roots.split(",") if root.strip()]
         roots.append(str(rag.settings.storage_path / "uploads"))
         requested = os.path.realpath(request.path)
-        if not any(_inside(root, requested) for root in roots) or not os.path.exists(requested):
+        allowed = None
+        # The check is written out here rather than in a helper on purpose:
+        # resolve first, then prefix-match against each resolved root.
+        for root in roots:
+            root_real = os.path.realpath(root)
+            if requested == root_real:
+                allowed = root_real
+                break
+            if requested.startswith(root_real + os.sep):
+                allowed = requested
+                break
+        if allowed is None or not os.path.exists(allowed):
             raise HTTPException(
                 status_code=404,
                 detail="Path not found, or outside the folders the API may ingest (INGEST_ROOTS).",
             )
-        stats = rag.ingest(Path(requested))
-        for error in stats.get("errors", []):
-            log.warning("ingest skipped %s: %s", error["file"], error["error"])
-            error["error"] = "could not be read, see the server log"
-        return stats
+        return rag.ingest(Path(allowed))
 
     @app.post("/api/upload", dependencies=protected)
     async def upload(files: list[UploadFile] = _UPLOAD_FILES) -> dict:
@@ -333,7 +331,7 @@ def create_app(pipeline: AgenticRAG | None = None):
         upload_dir.mkdir(parents=True, exist_ok=True)
         results: list[dict] = []
         saved: list[Path] = []
-        upload_root = str(upload_dir)
+        upload_root = os.path.realpath(upload_dir)
         for file in files:
             name = _safe_filename(file.filename or "upload")
             suffix = Path(name).suffix.lower()
@@ -346,14 +344,15 @@ def create_app(pipeline: AgenticRAG | None = None):
                     }
                 )
                 continue
-            target = upload_dir / name
-            stem, counter = target.stem, 1
-            while target.exists():
-                target = upload_dir / f"{stem}-{counter}{suffix}"
-                counter += 1
-            if not _inside(upload_root, str(target)):
+            candidate = os.path.realpath(upload_dir / name)
+            if not candidate.startswith(upload_root + os.sep):
                 results.append({"file": name, "status": "rejected", "detail": "invalid file name"})
                 continue
+            target = Path(candidate)
+            stem, counter = target.stem, 1
+            while target.exists():
+                target = target.with_name(f"{stem}-{counter}{suffix}")
+                counter += 1
             size = 0
             too_big = False
             with target.open("wb") as out:

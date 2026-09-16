@@ -16,10 +16,12 @@ plus a bug that showed up while taking the new README screenshot.
 - **Upload names are sanitised properly.** Directory parts and unusual
   characters are stripped, and the final path is checked to be inside the
   uploads folder before anything is written.
-- **Exception details stay on the server.** `/api/health`, the chat stream,
-  and ingest errors now log the full error and send the client a short
-  generic message. Provider setup errors still come through, because they
-  carry the fix the user needs.
+- **Exception details stay on the server.** `/api/health` and the chat
+  stream log the full error and send the client a short generic message.
+  Ingest names a file it could not read and prints the reason to stderr,
+  where `rag ingest` users still see it, instead of returning it in the
+  response. Provider setup errors still come through, because they carry
+  the fix the user needs.
 - **No regex backtracking on hostile input.** The sentence splitter matches
   a single space (whitespace is collapsed first, so results are identical),
   the mock's arithmetic and percentage patterns have bounded repetitions, and

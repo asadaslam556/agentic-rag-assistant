@@ -170,8 +170,12 @@ class AgenticRAG:
                 self._build_graph(document.id, chunks)
                 added_files += 1
             except Exception as exc:
-                # a corrupt PDF or unreadable file should not sink the batch
-                errors.append({"file": file.name, "error": str(exc)[:300]})
+                # A corrupt PDF or unreadable file should not sink the batch.
+                # The reason goes to stderr, where the CLI user sees it; the
+                # returned stats only name the file, because the API sends
+                # them to the client as they are.
+                print(f"note: could not read {file.name}: {str(exc)[:300]}", file=sys.stderr)
+                errors.append({"file": file.name, "error": "could not be read, see the server log"})
         stats = {
             "files_added": added_files,
             "files_skipped_existing": skipped_files,
