@@ -39,7 +39,7 @@
 [![Offline](https://img.shields.io/badge/runs%20offline-no%20keys%20needed-success)](#quick-start)
 
 <p align="center">
-  <img src="docs/demo.gif" width="100%" alt="Demo: a question split into two parts, a follow-up, a multi-hop question answered through the knowledge graph, a calculation, a German question, and an honest refusal when the sources have no answer">
+  <img src="docs/demo.gif" alt="Demo: a question split into two parts, a follow-up, a multi-hop question answered through the knowledge graph, a calculation, a German question, and an honest refusal when the sources have no answer">
 </p>
 
 <p align="center"><sub>Real run on Claude over the bundled sample documents: parallel sub-questions, follow-ups, knowledge graph traversal, the calculator, a German question, and an honest "not in the sources" at the end.</sub></p>
