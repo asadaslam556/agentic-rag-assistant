@@ -48,6 +48,13 @@ A retrieval-augmented assistant that does not just search and summarise. You cha
 
 It runs on a free local model by default, on Claude, OpenAI, or DeepSeek with one environment variable, and with no model at all for development, because a deterministic offline mock keeps the whole pipeline, the test suite, and CI working with zero keys and zero network.
 
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
+  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
+</picture></p>
+
+<p align="center"><sub>One answer up close: the question split into two parts, every claim cited and verified, and the agent's reasoning steps. Follows your GitHub theme.</sub></p>
+
 ## Quick start
 
 No API key, no model download. The offline mock answers until you connect a real model.
@@ -350,11 +357,6 @@ npm run dev        # console on :5173, proxies /api to :8000
 ```
 
 Run `rag serve` alongside it. For one port, `npm run build` once and `rag serve` hosts the console and the API together on :8000.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
-  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
-</picture>
 
 - **Conversations** in a sidebar you can rename, delete, and hide. The sidebar toggle remembers its state on desktop and turns into a slide-over drawer on phones. History stays in the browser; nothing is sent to a server.
 - **Chat thread** with a live view while the agent works: the current stage, each tool call as it happens, and the answer growing token by token.
