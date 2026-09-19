@@ -1,7 +1,7 @@
 # Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-235%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
+[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
 [![Eval](https://img.shields.io/badge/eval-8%2F8%20golden%20set-brightgreen)](eval/golden_set.jsonl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -38,14 +38,15 @@
 [![SSE](https://img.shields.io/badge/streaming-server%20sent%20events-FF6C37)](#interfaces)
 [![Offline](https://img.shields.io/badge/runs%20offline-no%20keys%20needed-success)](#quick-start)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
-  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
-</picture>
+<p align="center">
+  <img src="docs/demo.gif" width="100%" alt="Demo: a question split into two parts, a follow-up, a multi-hop question answered through the knowledge graph, a calculation, a German question, and an honest refusal when the sources have no answer">
+</p>
+
+<p align="center"><sub>Real run on Claude over the bundled sample documents: parallel sub-questions, follow-ups, knowledge graph traversal, the calculator, a German question, and an honest "not in the sources" at the end.</sub></p>
 
 A retrieval-augmented assistant that does not just search and summarise. You chat with it: an agent decides which tools to call, researches the independent parts of a question at the same time, streams a cited answer token by token, then checks every claim against the sources before the turn is marked done. When the evidence is not there, it says so.
 
-It runs on a free local model by default, on Claude or OpenAI with one environment variable, and with no model at all for development, because a deterministic offline mock keeps the whole pipeline, the test suite, and CI working with zero keys and zero network.
+It runs on a free local model by default, on Claude, OpenAI, or DeepSeek with one environment variable, and with no model at all for development, because a deterministic offline mock keeps the whole pipeline, the test suite, and CI working with zero keys and zero network.
 
 ## Quick start
 
@@ -305,7 +306,7 @@ LLM_MODEL=claude-sonnet-4-6
 ```bash
 LLM_PROVIDER=deepseek
 DEEPSEEK_API_KEY=sk-...
-LLM_MODEL=deepseek-chat
+LLM_MODEL=deepseek-flash
 ```
 
 **OpenAI:**
@@ -321,8 +322,8 @@ LLM_MODEL=gpt-4o-mini
 A run uses the model in several distinct roles. Planning tool calls, splitting a question, rewriting a follow-up, and scoring an eval are mechanical. Writing the answer and checking its claims are where quality shows. Set both tiers and each role goes to the right one:
 
 ```bash
-LLM_MODEL_FAST=deepseek-chat        # plan, decompose, rewrite, judge
-LLM_MODEL_DEEP=deepseek-reasoner    # synthesize, verify, vision
+LLM_MODEL_FAST=deepseek-flash        # plan, decompose, rewrite, judge
+LLM_MODEL_DEEP=deepseek-v4-pro    # synthesize, verify, vision
 ```
 
 Leave them unset and every role uses `LLM_MODEL`, exactly as before. Any single role can be pinned, which beats both tiers:
@@ -349,6 +350,11 @@ npm run dev        # console on :5173, proxies /api to :8000
 ```
 
 Run `rag serve` alongside it. For one port, `npm run build` once and `rag serve` hosts the console and the API together on :8000.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
+  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
+</picture>
 
 - **Conversations** in a sidebar you can rename, delete, and hide. The sidebar toggle remembers its state on desktop and turns into a slide-over drawer on phones. History stays in the browser; nothing is sent to a server.
 - **Chat thread** with a live view while the agent works: the current stage, each tool call as it happens, and the answer growing token by token.
@@ -455,7 +461,7 @@ Scale plan cost: EUR 649 per robot per month, billed annually. [1]
   average relevance (judge): 85%
 ```
 
-The 85% relevance is the honest reading of extractive answers: they carry supporting detail beyond the literal question words, and the lexical scorer counts that against them. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 235-test suite on two Python versions, and a full console build, all without secrets.
+The 85% relevance is the honest reading of extractive answers: they carry supporting detail beyond the literal question words, and the lexical scorer counts that against them. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 236-test suite on two Python versions, and a full console build, all without secrets.
 
 The default golden set covers the English sample documents, which is what CI runs. `eval/golden_set_multilingual.jsonl` covers the expanded corpus with German, Arabic, Chinese, and English questions, and needs the PDFs and multilingual documents ingested first:
 
@@ -517,7 +523,7 @@ DeepSeek speaks the OpenAI chat format, so it runs through the same client:
 ```bash
 LLM_PROVIDER=deepseek
 DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MODEL=deepseek-flash
 ```
 
 Keys are only ever read from the environment or `.env`. A missing one is reported as a setup problem with the variable named, not a stack trace:
@@ -659,7 +665,7 @@ agentic-rag-assistant/
   docs/                    # architecture, deployment, setup guide, command reference, screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
-  tests/                   # 235 tests, offline by design
+  tests/                   # 236 tests, offline by design
   .github/                 # CI, dependabot, templates
 ```
 
@@ -709,7 +715,7 @@ Local-first by default: no telemetry, and with Ollama nothing leaves your machin
 ## Development
 
 ```bash
-pytest                  # 235 tests, all offline
+pytest                  # 236 tests, all offline
 ruff check src tests    # lint
 rag eval                # golden set, non-zero exit on regression
 rag eval --judge        # adds faithfulness and relevance

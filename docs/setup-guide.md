@@ -76,7 +76,7 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 235 tests, all offline
+pytest                        # 236 tests, all offline
 ruff check src tests          # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 8/8 expected
@@ -121,7 +121,7 @@ LLM_MODEL=claude-sonnet-4-6
 
 For OpenAI, use `LLM_PROVIDER=openai`, `OPENAI_API_KEY`, and an `LLM_MODEL`
 such as `gpt-4o-mini`. DeepSeek is `LLM_PROVIDER=deepseek` with
-`DEEPSEEK_API_KEY` and `DEEPSEEK_MODEL=deepseek-chat`. Restart `rag serve`
+`DEEPSEEK_API_KEY` and `DEEPSEEK_MODEL=deepseek-flash`. Restart `rag serve`
 after changing `.env`, then check `rag stats` to confirm which client
 resolved.
 

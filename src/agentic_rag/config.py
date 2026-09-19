@@ -118,7 +118,7 @@ class Settings:
     azure_openai_api_version: str = "2024-06-01"
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_model: str = "deepseek-chat"
+    deepseek_model: str = "deepseek-flash"
     anthropic_api_key: str = ""
     anthropic_base_url: str = "https://api.anthropic.com"
     anthropic_model: str = "claude-sonnet-4-6"
@@ -256,7 +256,7 @@ class Settings:
             azure_openai_api_version=_env("AZURE_OPENAI_API_VERSION", "2024-06-01"),
             deepseek_api_key=_env("DEEPSEEK_API_KEY"),
             deepseek_base_url=_env("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/"),
-            deepseek_model=_env("DEEPSEEK_MODEL", "deepseek-chat"),
+            deepseek_model=_env("DEEPSEEK_MODEL", "deepseek-flash"),
             anthropic_api_key=_env("ANTHROPIC_API_KEY"),
             anthropic_base_url=_env("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/"),
             anthropic_model=_env("ANTHROPIC_MODEL", "claude-sonnet-4-6"),

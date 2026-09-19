@@ -10,9 +10,12 @@ python-multipart>=0.0.9  # multipart parsing for the /api/upload endpoint
 cryptography>=3.1   # AES-encrypted PDFs, common in corporate documents
 fontTools>=4.0       # quiets pypdf's CFF font-encoding warnings, improves glyph fidelity on some corporate PDFs
 
-# Optional extras (install as needed):
-#   pip install sentence-transformers   -> stronger local embeddings (EMBEDDINGS_PROVIDER=sbert)
-#                                       -> also multilingual embeddings (EMBEDDINGS_PROVIDER=multilingual,
-#                                          downloads intfloat/multilingual-e5-small, about 470 MB, on first use)
-#   pip install pytest ruff             -> tests and linting (or: pip install -e ".[dev]")
+# Optional extras, installed through the project so versions stay in step:
+#   pip install -e ".[multilingual]"  -> multilingual embeddings (EMBEDDINGS_PROVIDER=multilingual),
+#                                        downloads intfloat/multilingual-e5-small, about 470 MB, on first use
+#   pip install -e ".[sbert]"         -> English sentence embeddings (EMBEDDINGS_PROVIDER=sbert)
+#   pip install -e ".[vision]"        -> read PDF pages as images (PDF_VISION)
+#   pip install -e ".[colpali]"       -> page-image retrieval (VISUAL_RETRIEVER=colpali), pulls in torch
+#   pip install -e ".[neo4j]"         -> Neo4j as the knowledge graph store (GRAPH_STORE=neo4j)
+#   pip install -e ".[dev]"           -> pytest and ruff
 # The web console under frontend/ is a separate npm project (see docs/setup-guide.md).

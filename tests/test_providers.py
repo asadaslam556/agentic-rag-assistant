@@ -127,7 +127,24 @@ def test_deepseek_without_a_key_says_what_to_do():
 def test_deepseek_defaults_to_its_own_endpoint_and_model():
     settings = Settings()
     assert settings.deepseek_base_url == "https://api.deepseek.com"
-    assert settings.deepseek_model == "deepseek-chat"
+    assert settings.deepseek_model == "deepseek-flash"
+
+
+def test_rag_models_lists_deepseek_from_its_own_endpoint(monkeypatch):
+    from agentic_rag.llm import discovery
+
+    seen = {}
+
+    def fake_get_json(url, headers, timeout):
+        seen["url"], seen["auth"] = url, headers.get("Authorization")
+        return {"data": [{"id": "deepseek-v4-pro"}, {"id": "deepseek-flash"}]}
+
+    monkeypatch.setattr(discovery, "_get_json", fake_get_json)
+    settings = Settings(llm_provider="deepseek", deepseek_api_key="sk-test")
+    names, source = discovery.list_endpoint_models(settings)
+    assert names == ["deepseek-flash", "deepseek-v4-pro"]
+    assert seen == {"url": "https://api.deepseek.com/models", "auth": "Bearer sk-test"}
+    assert discovery.active_model(settings) == "deepseek-flash"
 
 
 def test_provider_settings_round_trip_through_the_environment(monkeypatch):

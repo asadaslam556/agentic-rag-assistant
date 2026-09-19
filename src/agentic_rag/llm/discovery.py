@@ -46,16 +46,24 @@ def list_endpoint_models(settings: Settings) -> tuple[list[str], str]:
             "anthropic-version": "2023-06-01",
             **settings.llm_extra_headers,
         }
-    elif provider in {"openai", "openai_compatible"}:
-        url = f"{settings.openai_base_url}/models"
-        headers = dict(settings.llm_extra_headers)
-        if settings.openai_api_key:
-            headers["Authorization"] = f"Bearer {settings.openai_api_key}"
-    else:
-        raise RuntimeError(
-            f"Listing models is not supported for LLM_PROVIDER={provider}. "
-            "Azure deployments are named by you in the portal, so use AZURE_OPENAI_DEPLOYMENT."
+    elif provider in {"openai", "openai_compatible", "deepseek"}:
+        # DeepSeek speaks the OpenAI wire format, so it lists models the same way
+        base_url, api_key = (
+            (settings.deepseek_base_url, settings.deepseek_api_key)
+            if provider == "deepseek"
+            else (settings.openai_base_url, settings.openai_api_key)
         )
+        url = f"{base_url}/models"
+        headers = dict(settings.llm_extra_headers)
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+    elif provider == "azure":
+        raise RuntimeError(
+            "Azure deployments are named by you in the portal, so there is nothing to list. "
+            "Use the deployment name in AZURE_OPENAI_DEPLOYMENT."
+        )
+    else:
+        raise RuntimeError(f"Listing models is not supported for LLM_PROVIDER={provider}.")
 
     try:
         payload = _get_json(url, headers, settings.request_timeout)
@@ -88,6 +96,8 @@ def active_model(settings: Settings) -> str:
         return settings.anthropic_model
     if provider in {"openai", "openai_compatible"}:
         return settings.openai_model
+    if provider == "deepseek":
+        return settings.deepseek_model
     if provider == "azure":
         return settings.azure_openai_deployment
     return settings.ollama_model

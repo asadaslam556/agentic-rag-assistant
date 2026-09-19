@@ -3,7 +3,8 @@
 ## 3.13.0
 
 Fixes for everything GitHub's CodeQL scan flagged on the first public push,
-plus a bug that showed up while taking the new README screenshot.
+a bug that showed up while taking the new README screenshot, model listing
+for DeepSeek, and a demo GIF.
 
 ### Security
 
@@ -29,8 +30,8 @@ plus a bug that showed up while taking the new README screenshot.
 - **The OpenAI key check compares the host.** It used a substring test, which
   `api.openai.com.example.net` would have passed.
 - **CI runs with read-only repository permissions.**
-- Three regression tests cover the ingest boundary, upload names, and the
-  patterns on long adversarial input. Suite: 232 to 235.
+- Regression tests cover the ingest boundary, upload names, the patterns
+  on long adversarial input, and DeepSeek model listing. Suite: 232 to 236.
 
 ### Fixed: steps lost their branch in the saved answer
 
@@ -39,8 +40,21 @@ the steps in the final answer did not, so the evidence drawer labelled every
 step "part 1". `AgentStep` now carries `branch`, and a retried branch keeps
 the number of the branch it replaces.
 
+### Fixed: `rag models` with DeepSeek
+
+`rag models` said listing was not supported for `LLM_PROVIDER=deepseek` and
+pointed at Azure settings. DeepSeek serves an OpenAI-style `/models` route,
+so it now lists the models your key can use and marks the one in use. Only
+Azure keeps its own message, since deployments there are named by you.
+The DeepSeek default and every example now use the names DeepSeek serves
+today: `deepseek-flash` and `deepseek-v4-pro` (previously `deepseek-chat`
+and `deepseek-reasoner`).
+
 ### Docs
 
+- A demo GIF at the top of the README: a question split into parts, a
+  follow-up, a multi-hop question through the knowledge graph, the
+  calculator, a German question, and an honest "not in the sources".
 - New README screenshot from a real run on Claude: a question split into
   two parts, cited and verified answers, and the reasoning view, in light
   and dark versions that follow the reader's GitHub theme.

@@ -1,6 +1,6 @@
 """Command line interface.
 
-Commands: ingest, ask, chat, eval, models, stats, reset, serve.
+Commands: ingest, ask, chat, eval, models, stats, graph, reindex, reset, serve.
 Zero-dependency output (ANSI colors degrade to plain text on
 non-interactive terminals and legacy Windows consoles).
 """
@@ -135,18 +135,18 @@ def cmd_models(args: argparse.Namespace) -> int:
         return 2
     current = active_model(settings)
     for name in names:
-        marker = paint("  <- current LLM_MODEL", "green") if name == current else ""
+        marker = paint("  <- in use", "green") if name == current else ""
         print(f"  {name}{marker}")
     print(paint(f"\n  source: {source}", "dim"))
     if current and current not in names:
         print(
             paint(
-                f"  note: LLM_MODEL={current} is not in that list. Copy one of the names above.",
+                f"  note: the configured model {current} is not in that list. Copy one of the names above.",
                 "yellow",
             )
         )
     elif not current:
-        print(paint("  note: LLM_MODEL is unset, so the model is picked automatically.", "dim"))
+        print(paint("  note: no model is configured, so one is picked automatically.", "dim"))
     return 0
 
 

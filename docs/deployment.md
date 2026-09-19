@@ -96,8 +96,8 @@ Set these as environment variables on the platform, never in the repository:
 ```text
 LLM_PROVIDER=deepseek
 DEEPSEEK_API_KEY=your-key
-LLM_MODEL_FAST=deepseek-chat
-LLM_MODEL_DEEP=deepseek-reasoner
+LLM_MODEL_FAST=deepseek-flash
+LLM_MODEL_DEEP=deepseek-v4-pro
 SEARCH_PROVIDER=ddgs
 PDF_VISION=off
 ```
@@ -131,7 +131,7 @@ gcloud run deploy agentic-rag \
   --allow-unauthenticated \
   --memory 1Gi \
   --timeout 900 \
-  --set-env-vars LLM_PROVIDER=deepseek,LLM_MODEL_FAST=deepseek-chat,LLM_MODEL_DEEP=deepseek-reasoner \
+  --set-env-vars LLM_PROVIDER=deepseek,LLM_MODEL_FAST=deepseek-flash,LLM_MODEL_DEEP=deepseek-v4-pro \
   --set-secrets DEEPSEEK_API_KEY=deepseek-key:latest
 ```
 

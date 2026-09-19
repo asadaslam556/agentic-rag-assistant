@@ -170,7 +170,7 @@ after it.
 ```text
 LLM_PROVIDER=deepseek
 DEEPSEEK_API_KEY=your-key-here
-LLM_MODEL=deepseek-chat
+LLM_MODEL=deepseek-flash
 ```
 
 **Or OpenAI.** `LLM_PROVIDER=openai`, `OPENAI_API_KEY=...`,
@@ -181,8 +181,8 @@ rewriting a follow-up, and judging an eval are mechanical. Writing the answer
 and verifying it are not. Set both and each role goes to the right model:
 
 ```text
-LLM_MODEL_FAST=deepseek-chat
-LLM_MODEL_DEEP=deepseek-reasoner
+LLM_MODEL_FAST=deepseek-flash
+LLM_MODEL_DEEP=deepseek-v4-pro
 ```
 
 Any single role can be pinned, which beats the tiers:
