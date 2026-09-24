@@ -107,7 +107,7 @@ def test_eval_cases_declare_categories_and_reachable_tools():
         for line in (ROOT / "eval" / "golden_set.jsonl").read_text().splitlines()
         if line.strip()
     ]
-    known_tools = {"vector_search", "web_search", "knowledge_base", "calculator"}
+    known_tools = {"vector_search", "web_search", "knowledge_base", "calculator", "sql_query"}
     assert len(cases) >= 8
     for case in cases:
         assert case["category"], case["id"]

@@ -6,7 +6,7 @@ context, drafts an answer with numbered citations, and then verifies
 every claim against the evidence before returning it.
 """
 
-__version__ = "3.13.0"
+__version__ = "3.14.0"
 
 from agentic_rag.pipeline import AgenticRAG  # noqa: E402
 

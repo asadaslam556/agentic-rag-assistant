@@ -115,7 +115,7 @@ If you want the demo private, set `API_AUTH_TOKEN` too, and note the browser con
 5. **Environment**: add the provider variables above.
 6. **Create Web Service**. First build takes a few minutes.
 7. You get `https://<name>.onrender.com`. Open it on your phone.
-8. Optional: **Add Disk**, mount path `/app/storage`, 1 GB, so uploaded documents survive a restart. Disks are a paid feature, and without one the bundled corpus still works because it is baked into the image.
+8. Optional: **Add Disk**, mount path `/app/storage`, 1 GB, so uploaded documents survive a restart. Disks are a paid feature, and without one the bundled corpus still works because it is baked into the image. The image runs as an unprivileged user (uid 10001), and this combination has not been verified on Render yet. If uploads return a server error after attaching a disk, the disk is not writable by that user: check with `ls -ld /app/storage` in the Render shell, and as a stopgap deploy with the `USER rag` line removed from the Dockerfile.
 
 Check `https://<name>.onrender.com/api/health` first. It reports every component, so if the model backend is misconfigured you see exactly that rather than guessing.
 

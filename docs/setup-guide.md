@@ -22,6 +22,7 @@ flowchart LR
     C -->|free, local| D["5<br/>Ollama"]
     C -->|hosted| E["5b<br/>Claude, OpenAI,<br/>DeepSeek"]
     D --> F["7<br/>Web console"]
+    B -.-> H["5d<br/>Database and<br/>reranking"]
     E --> F
     F --> G["12<br/>Your own<br/>documents"]
 ```
@@ -76,10 +77,10 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 236 tests, all offline
+pytest                        # 287 tests, all offline
 ruff check src tests          # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
-rag eval                      # golden set, 8/8 expected
+rag eval                      # golden set, 11/11 expected
 ```
 
 If all four pass, the installation is sound.
@@ -194,6 +195,29 @@ rag eval --golden eval/golden_set_multilingual.jsonl   # 8/8, needs the PDFs ing
 The [README](../README.md) has the schema, the routing rule, and the
 before-and-after evidence.
 
+## 5d. Database questions and reranking
+
+Counts, totals, and rankings over records go to the `sql_query` tool, which
+queries a small sample orders database with no setup:
+
+```powershell
+rag ask "Which customer has ordered the most robots in total?" --trace
+```
+
+The trace shows the SELECT the agent ran, and the source it cites is that
+same query. To query your own data, point `SQL_DATABASE_PATH` in `.env` at a
+`.db`, `.sqlite`, or `.sqlite3` file. It is opened read-only, and SQLite
+itself refuses anything that is not a read.
+
+Reranking is optional and needs a model download, so it is off by default:
+
+```powershell
+pip install -e ".[rerank]"
+```
+
+then set `RERANKER=cross-encoder` in `.env` and check `rag stats` shows
+`reranker: cross-encoder:...`.
+
 ## 6. Web search
 
 On by default through keyless DuckDuckGo (`SEARCH_PROVIDER=ddgs`). The agent
@@ -267,7 +291,7 @@ rag eval
 rag eval --judge
 ```
 
-`rag eval` checks the eight golden questions for correctness and citations
+`rag eval` checks the eleven golden questions for correctness and citations
 and exits non-zero on any regression, which is exactly what CI runs.
 `--judge` adds two graded scores per answer: faithfulness (is every
 statement supported by the retrieved sources) and relevance (does the
@@ -298,8 +322,10 @@ curl -s -X POST localhost:8000/api/chat `
      -d '{"question": "What is the payload capacity of the Atlas P2?", "history": []}'
 ```
 
-`SECURITY.md` covers the rest (TLS in front, why `/api/ingest` must never
-be exposed to untrusted clients, what `/api/upload` enforces).
+`SECURITY.md` covers the rest: TLS in front, why `/api/ingest` must never
+be exposed to untrusted clients, what `/api/upload` enforces, how planted
+instructions in documents and web pages are filtered, how the SQL tool is
+kept read-only, and what is not built in (rate limiting, per-user access).
 
 ## 11. Docker
 
@@ -310,7 +336,13 @@ docker compose up --build
 One image with the console built in and the sample corpus pre-ingested,
 served on port 8000. The compose file maps `host.docker.internal` so the
 container can reach an Ollama server on your machine, and keeps the index
-and uploads in a named volume so they survive rebuilds.
+and uploads in a named volume so they survive rebuilds. The container runs
+as an unprivileged user; if you are upgrading from an image older than
+3.14.0, fix the old volume's ownership once:
+
+```powershell
+docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage
+```
 
 `.env` is deliberately not copied into the image, so the container answers
 with the offline mock until you opt in: uncomment `env_file` in
@@ -334,6 +366,10 @@ or the paperclip button in the console. Re-ingesting the same files skips
 them (tracked by content), and `rag reset --yes` wipes the index for a
 fresh start. PDFs need embedded text: scanned image-only PDFs come out
 empty because OCR is out of scope here.
+
+Tabular data belongs in a database rather than in documents. Set
+`SQL_DATABASE_PATH` to your SQLite file and the agent can count and sum over
+it (see 5d).
 
 ## 13. Push it to your GitHub
 
@@ -366,6 +402,10 @@ golden-set eval, and a frontend build, all without any secrets configured.
 | Retrieval is weak on non-English documents | The default `local` embedder matches shared tokens only. Set `EMBEDDINGS_PROVIDER=multilingual`, `pip install -e ".[multilingual]"`, then `rag reindex`. |
 | `EMBEDDINGS_PROVIDER=multilingual requires sentence-transformers` | The extra is not installed in this environment. `pip install -e ".[multilingual]"`, or build the Docker image with `EXTRAS=[multilingual]`. |
 | The console says "Demo mode" although `.env` has a key | Docker does not read `.env` unless `env_file` is enabled in `docker-compose.yml`. Locally, check `rag stats`. |
+| `sql_query` is missing from `rag stats` | `SQL_DATABASE_PATH` is blank, points at a missing file, or the database would not open. A file that fails to load prints the reason on stderr at startup, and `/api/health` reports either problem as `down` under `database`. |
+| `RERANKER=cross-encoder requires sentence-transformers` | The extra is not installed in this environment. `pip install -e ".[rerank]"`, or set `RERANKER=none`. |
+| Uploads fail with a server error in Docker after upgrading | The volume was created by an image older than 3.14.0 and is owned by root. Run `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage` once. |
+| A source shows `[removed: text addressed to the assistant ...]` | The document or web page contained a sentence that tries to instruct the model, and it was cut before any model read it. See `SECURITY.md`. |
 | `graph_search` never gets used | The graph is empty, so the tool is not offered. Run `rag graph stats`, and `rag graph rebuild` if it shows nothing. |
 | Questions never split into branches | Decomposition is skipped for the offline mock by design. Configure a real provider, or check `MAX_BRANCHES` is above 1. |
 | A PDF ingests but questions about it fail | It is a scanned image without a text layer. Convert it with OCR first or supply the text as md. |
@@ -375,7 +415,9 @@ golden-set eval, and a frontend build, all without any secrets configured.
 
 `src/agentic_rag/pipeline.py` wires everything and is the best starting
 point. From there: `agent/` for the loop and prompts, `retrieval/` for the
-hybrid search, `verification/` for the claim checks and the judge,
+hybrid search and the reranker, `tools/sql.py` for text-to-SQL,
+`core/injection.py` for the prompt-injection filter, `verification/` for the
+claim checks and the judge,
 `api.py` for the REST and SSE surface, and `frontend/src/App.jsx` for the
 console. [`architecture.md`](architecture.md) explains the design, and
 [`CONTRIBUTING.md`](../CONTRIBUTING.md) lists the rules that keep the offline

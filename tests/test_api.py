@@ -129,6 +129,44 @@ def test_auth_token_gates_every_endpoint_except_health(tmp_path):
     assert locked.post("/api/ask", json=body).status_code == 401
     ok = locked.post("/api/ask", json=body, headers={"Authorization": "Bearer secret-token"})
     assert ok.status_code == 200 and "450" in ok.json()["text"]
+    # near misses and non-ASCII headers are a clean 401, never a server error
+    for wrong in (b"Bearer secret-toke", b"Bearer secret-token2", "Bearer café".encode("latin-1")):
+        assert locked.post("/api/ask", json=body, headers={"Authorization": wrong}).status_code == 401
+
+
+def test_console_cache_headers_survive_an_upgrade(tmp_path, monkeypatch):
+    import agentic_rag.api as api
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "fonts").mkdir()
+    (dist / "index.html").write_text("<!doctype html><title>t</title>", encoding="utf-8")
+    (dist / "assets" / "index-abc123.js").write_text("console.log(1)", encoding="utf-8")
+    (dist / "fonts" / "Plex.woff2").write_bytes(b"wOF2")
+    monkeypatch.setattr(api, "FRONTEND_DIST", dist)
+    settings = Settings(llm_provider="mock", embeddings_provider="local", search_provider="none",
+                        storage_dir=str(tmp_path / "storage"))
+    console = TestClient(create_app(AgenticRAG(settings)))
+
+    for path in ("/", "/index.html"):
+        assert console.get(path).headers["cache-control"] == "no-cache"
+    asset = console.get("/assets/index-abc123.js")
+    assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+    font = console.get("/fonts/Plex.woff2")
+    assert font.headers["cache-control"] == "no-cache"
+    assert font.headers["content-type"] == "font/woff2"
+    # the API routes are not touched by the static mount
+    assert "cache-control" not in console.get("/api/health").headers
+
+
+def test_health_reports_the_database_and_reranker(client):
+    payload = client.get("/api/health").json()
+    assert payload["reranker"] == "none"
+    assert "sql_query" in payload["tools"]
+    assert payload["components"]["database"] == {
+        "status": "ok",
+        "detail": "sales.sql, 2 tables, read-only",
+    }
 
 
 def test_health_reports_component_status(client):

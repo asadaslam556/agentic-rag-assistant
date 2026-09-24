@@ -1,5 +1,92 @@
 # Changelog
 
+## 3.14.0
+
+Text-to-SQL, optional cross-encoder reranking, and a defence against
+instructions planted in documents and web pages.
+
+### Added: `sql_query`, text-to-SQL over a read-only database
+
+Questions about records rather than passages (which customer ordered the
+most, how many orders are open, what a year brought in) now go to a
+database. The planner writes one SELECT from the schema and worked examples
+in the tool description, and a failing query comes back with SQLite's own
+error so the planner can fix it on the next step. The source it cites is the
+query itself.
+
+- Sample data in `data/structured/sales.sql`: fictional customers and
+  orders, loaded into an in-memory database at startup, so it lives in git
+  as text and nothing is written to disk.
+- `SQL_DATABASE_PATH` points at your own `.db`, `.sqlite`, or `.sqlite3`
+  file, opened with `mode=ro`. Blank turns the tool off.
+- Read-only is enforced by SQLite rather than by reading the query: an
+  authorizer that allows reads only, a `query_only` connection, one
+  statement per call, a 2 second limit, and at most 50 rows.
+- The offline mock runs the worked example a question closely matches, so
+  three new database questions in the golden set stay deterministic. Golden
+  set: 8 to 11 cases.
+- `/api/health` reports a `database` component, and the console labels the
+  new step "Queried the database" and its sources "database".
+
+### Added: optional cross-encoder reranking
+
+`RERANKER=cross-encoder` rescores candidates in context assembly with a
+model that reads question and passage together, replacing the embedding
+similarity term while keeping rank fusion across tools. Install with
+`pip install -e ".[rerank]"`; `RERANKER_MODEL` picks the model. Off by
+default, loaded lazily, and a reranker that fails mid-question falls back
+to embedding similarity. `rag stats` and `/api/health` show which is active.
+
+### Security
+
+- **Planted instructions are filtered.** Sentences in evidence or tool
+  observations that try to instruct the model ("ignore previous
+  instructions", "reveal your system prompt", fake `<system>` tags, and
+  German equivalents) are cut before any model reads them and replaced by a
+  visible marker. The planning, synthesis, and verification prompts now say
+  outright that sources are data, not instructions. The patterns match
+  nothing in the sample corpora, and a test keeps it that way.
+- **The API token is compared in constant time**, and a malformed or
+  non-ASCII Authorization header is a clean 401 instead of a server error.
+- **SQL functions come from an allowlist.** Functions that build large
+  values on request (`randomblob`, `zeroblob`, `printf`, `format`) allocate
+  in one step the time limit cannot interrupt, so a single chat request
+  could have asked the server for close to a gigabyte. Only aggregate, math,
+  text, and date functions are allowed now, `load_extension` included in the
+  refusals, and on Python 3.11+ any one value is capped at 1 MB.
+- **The console no longer loads fonts from Google.** IBM Plex is served by
+  the app itself (Latin-1 subsets from the official IBM release, SIL OFL
+  1.1, licence in `frontend/public/fonts/`), so opening the console sends
+  visitors' IP addresses nowhere.
+- **The Docker image runs as an unprivileged user** (uid 10001) that can
+  only write to `storage/`, with a `HEALTHCHECK` on `/api/health`.
+  **Upgrading:** a volume created by an older image is owned by root and
+  uploads fail with a server error until you run
+  `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage`
+  once.
+- **No blank console after an upgrade.** `index.html` and other unhashed
+  files are served with `Cache-Control: no-cache`, and Vite's hashed
+  `assets/` with a one-year immutable lifetime. Browsers used to reuse an old
+  `index.html` that pointed at deleted assets. Fonts are served as
+  `font/woff2`.
+- **CI checks dependencies.** `pip-audit` and `npm audit` run on every push,
+  and GitHub Actions are pinned to commit hashes, which Dependabot updates.
+- `SECURITY.md` documents these defences and what is not built in: rate
+  limiting, per-user access control, and output filtering.
+
+### Docs
+
+- README sections for the database and reranking, updated diagrams, eval
+  figures, configuration table, and a longer security section. The offline
+  judge's relevance average moves from 85% to 71%, because the three new
+  database answers quote a raw row; the README says why.
+- `docs/architecture.md` gains a text-to-SQL section, `docs/setup-guide.md`
+  a database and reranking step plus troubleshooting rows, and
+  `docs/commands.md` the new settings.
+- Stale badges fixed: React 19, not 18.
+- `scripts/check_text.py` now checks `.sql` files too.
+- Suite: 236 to 287.
+
 ## 3.13.0
 
 Fixes for everything GitHub's CodeQL scan flagged on the first public push,

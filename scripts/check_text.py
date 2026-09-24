@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {
     ".py", ".md", ".txt", ".toml", ".yml", ".yaml", ".json", ".jsonl",
-    ".js", ".jsx", ".css", ".html", ".svg", ".cfg", ".ini", ".example",
+    ".js", ".jsx", ".css", ".html", ".svg", ".cfg", ".ini", ".example", ".sql",
 }
 TEXT_NAMES = {"Dockerfile", "Makefile", ".gitignore", ".dockerignore", ".gitattributes", ".editorconfig"}
 SKIP_PARTS = {".git", ".venv", "venv", "node_modules", "dist", "storage", "__pycache__"}

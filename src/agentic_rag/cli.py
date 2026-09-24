@@ -161,6 +161,7 @@ def cmd_stats(args: argparse.Namespace) -> int:  # noqa: ARG001
     print(f"  embedder: {rag.embedder.name}")
     print(f"  search provider: {rag.settings.search_provider}")
     print(f"  verifier mode: {rag.verifier.mode}")
+    print(f"  reranker: {rag.reranker.name if rag.reranker is not None else 'none'}")
     print(f"  tools: {', '.join(rag.tools)}")
     print(paint("Index", "bold"))
     for key, value in rag.store.stats().items():

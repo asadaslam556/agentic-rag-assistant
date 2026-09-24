@@ -22,8 +22,18 @@ RUN pip install --no-cache-dir -e ".${EXTRAS}"
 
 COPY --from=console /console/dist ./frontend/dist
 
-# Build the vector index for the bundled sample corpus at image build time
-RUN rag ingest data/sample_docs
+# Build the vector index for the bundled sample corpus at image build time,
+# then hand storage/ to an unprivileged user: the server only ever writes
+# there (index, graph, uploads, eval reports), and nothing else needs root.
+# A fixed uid keeps volume ownership predictable across rebuilds.
+RUN rag ingest data/sample_docs \
+    && useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin rag \
+    && chown -R rag:rag /app/storage
+USER rag
 
 EXPOSE 8000
+# Liveness only: a 200 means the process answers. "degraded" in the body
+# (for example web search unavailable) is not a reason to restart it.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
 CMD ["rag", "serve", "--host", "0.0.0.0", "--port", "8000"]

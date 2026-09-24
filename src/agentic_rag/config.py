@@ -147,6 +147,9 @@ class Settings:
 
     # Structured data
     catalog_path: str = "data/structured/catalog.json"
+    # sql_query tool: a .sql script (loaded in memory) or a .db/.sqlite file
+    # (opened read-only). Blank turns the tool off.
+    sql_database_path: str = "data/structured/sales.sql"
 
     # Retrieval / chunking
     retrieval_k: int = 5
@@ -163,6 +166,10 @@ class Settings:
     chunk_target_chars: int = 900
     chunk_overlap_chars: int = 150
     context_token_budget: int = 2200
+    # none | cross-encoder. cross-encoder rescores candidates with a model
+    # that reads question and passage together; needs sentence-transformers
+    reranker: str = "none"
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # Agent / verification
     max_agent_steps: int = 6
@@ -274,6 +281,7 @@ class Settings:
             tavily_api_key=_env("TAVILY_API_KEY"),
             web_fixtures_path=_env("WEB_FIXTURES_PATH", "data/web_fixtures.json"),
             catalog_path=_env("CATALOG_PATH", "data/structured/catalog.json"),
+            sql_database_path=_env("SQL_DATABASE_PATH", "data/structured/sales.sql"),
             retrieval_k=_env_int("RETRIEVAL_K", 5),
             retrieval_mode=_env("RETRIEVAL_MODE", "hybrid").lower(),
             pdf_vision=_env("PDF_VISION", "auto").lower(),
@@ -288,6 +296,8 @@ class Settings:
             chunk_target_chars=_env_int("CHUNK_TARGET_CHARS", 900),
             chunk_overlap_chars=_env_int("CHUNK_OVERLAP_CHARS", 150),
             context_token_budget=_env_int("CONTEXT_TOKEN_BUDGET", 2200),
+            reranker=_env("RERANKER", "none").lower(),
+            reranker_model=_env("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
             max_agent_steps=_env_int("MAX_AGENT_STEPS", 6),
             max_branches=_env_int("MAX_BRANCHES", 3),
             max_total_agent_steps=_env_int("MAX_TOTAL_AGENT_STEPS", 12),

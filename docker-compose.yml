@@ -18,7 +18,10 @@ services:
     # env_file:
     #   - .env
     volumes:
-      # the index, graph, and uploads survive rebuilds and restarts
+      # the index, graph, and uploads survive rebuilds and restarts. The
+      # image runs as uid 10001; a volume made by an image older than 3.14.0
+      # is owned by root, so fix it once after upgrading:
+      #   docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage
       - rag-storage:/app/storage
     extra_hosts:
       - "host.docker.internal:host-gateway" # host networking on Linux

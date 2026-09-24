@@ -16,6 +16,7 @@ import json
 from agentic_rag.agent.parser import ParserError, extract_first_json
 from agentic_rag.agent.prompts import build_plan_system
 from agentic_rag.config import Settings
+from agentic_rag.core.injection import strip_injections
 from agentic_rag.core.types import AgentStep, Evidence
 from agentic_rag.llm.base import LLMClient
 from agentic_rag.tools import render_tool_catalog
@@ -129,7 +130,9 @@ class Orchestrator:
                         item.id = f"e{len(evidence) + 1}"
                         item.call_id = call_id
                         evidence.append(item)
-                    observation = result.observation
+                    # the planner picks the next search from this text, so an
+                    # injected page must not get to steer it
+                    observation, _ = strip_injections(result.observation)
 
             observation_index += 1
             steps.append(

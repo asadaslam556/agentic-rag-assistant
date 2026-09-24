@@ -4,7 +4,8 @@ It implements the same three prompt contracts the real models see
 (PLAN, SYNTHESIZE, REFINE) with simple deterministic heuristics:
 
 - PLAN: routes the question to a tool (calculator for arithmetic,
-  knowledge_base for catalog/pricing questions, vector_search
+  sql_query when it closely matches one of the database's worked
+  examples, knowledge_base for catalog/pricing questions, vector_search
   otherwise), optionally cross-checks with a second tool, then
   finishes.
 - SYNTHESIZE: writes an extractive answer by selecting the source
@@ -50,6 +51,25 @@ _GRAPH_HINTS = (
     "connected to", "related to", "the maker of", "the manufacturer of",
     "from the company", "same company",
 )
+
+
+# The sql_query tool lists worked examples in its description. The mock
+# cannot write SQL, so it runs the example whose question it matches. The
+# bar is high on purpose: most of the example's words must appear, or an
+# ordinary lookup that shares one word ("robots") would land on the database.
+_SQL_EXAMPLE = re.compile(r"^\s*Q: (.+)\n\s*SQL: (.+)$", re.MULTILINE)
+
+
+def match_sql_example(system: str, question: str) -> str:
+    """The SQL of the worked example the question closely matches, or ""."""
+    question_tokens = content_tokens(question)
+    best_sql, best_overlap = "", 0
+    for example, sql in _SQL_EXAMPLE.findall(system):
+        example_tokens = content_tokens(example)
+        overlap = len(question_tokens & example_tokens)
+        if overlap >= 2 and overlap >= 0.6 * len(example_tokens) and overlap > best_overlap:
+            best_sql, best_overlap = sql.strip(), overlap
+    return best_sql
 
 
 def _is_identifier(question: str, match: re.Match) -> bool:
@@ -127,6 +147,11 @@ class MockLLM(LLMClient):
                     "The question refers to something by its relationships, so walk the graph.",
                     "graph_search",
                     {"query": question},
+                )
+            sql = match_sql_example(system, question) if available("sql_query") else ""
+            if sql:
+                return action(
+                    "Counts and totals over records are a database query.", "sql_query", {"sql": sql}
                 )
             if any(hint in question_lower for hint in _KB_HINTS) and available("knowledge_base"):
                 return action(

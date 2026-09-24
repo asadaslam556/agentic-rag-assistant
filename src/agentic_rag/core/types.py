@@ -52,7 +52,7 @@ class Evidence:
 
     id: str
     text: str
-    source_type: str          # vector | web | structured | calculation | page
+    source_type: str          # vector | web | structured | sql | calculation | page | graph
     source_ref: str
     title: str
     tool_name: str

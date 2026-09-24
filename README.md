@@ -1,8 +1,8 @@
 # Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
-[![Eval](https://img.shields.io/badge/eval-8%2F8%20golden%20set-brightgreen)](eval/golden_set.jsonl)
+[![Tests](https://img.shields.io/badge/tests-287%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
+[![Eval](https://img.shields.io/badge/eval-11%2F11%20golden%20set-brightgreen)](eval/golden_set.jsonl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Backend**
@@ -14,7 +14,7 @@
 [![pytest](https://img.shields.io/badge/tested%20with-pytest-0A9EDC?logo=pytest&logoColor=white)](https://docs.pytest.org)
 
 **Frontend**
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)](frontend/public/manifest.webmanifest)
 
@@ -29,6 +29,7 @@
 
 **Storage**
 [![SQLite](https://img.shields.io/badge/knowledge%20graph-SQLite-003B57?logo=sqlite&logoColor=white)](#the-knowledge-graph)
+[![Text-to-SQL](https://img.shields.io/badge/text--to--SQL-read--only%20SQLite-003B57?logo=sqlite&logoColor=white)](#asking-the-database)
 [![Neo4j](https://img.shields.io/badge/optional-Neo4j-4581C3?logo=neo4j&logoColor=white)](#storage-and-operations)
 [![DuckDuckGo](https://img.shields.io/badge/web%20search-DuckDuckGo-DE5833?logo=duckduckgo&logoColor=white)](https://duckduckgo.com)
 
@@ -79,14 +80,16 @@ Or run everything in Docker with `docker compose up --build`. The [setup guide](
 
 ## Contents
 
-[Quick start](#quick-start) · [What it does](#what-it-does) · [Architecture](#architecture) · [The layers](#the-layers) · [Choosing a model](#choosing-a-model) · [The console](#the-console) · [PDFs](#pdfs-that-carry-their-meaning-in-pictures) · [Evaluation](#evaluation) · [Configuration](#configuration) · [Knowledge graph](#the-knowledge-graph) · [Languages](#languages) · [Docker](#docker) · [Deployment](#deployment-and-mobile) · [Design decisions](#design-decisions)
+[Quick start](#quick-start) · [What it does](#what-it-does) · [Architecture](#architecture) · [The layers](#the-layers) · [Choosing a model](#choosing-a-model) · [The console](#the-console) · [PDFs](#pdfs-that-carry-their-meaning-in-pictures) · [Text-to-SQL](#asking-the-database) · [Reranking](#reranking) · [Evaluation](#evaluation) · [Configuration](#configuration) · [Knowledge graph](#the-knowledge-graph) · [Languages](#languages) · [Docker](#docker) · [Deployment](#deployment-and-mobile) · [Security](#security) · [Design decisions](#design-decisions)
 
 ## What it does
 
-- **Plans its own tool use.** Corpus search, knowledge graph traversal, web search, a structured catalog, and a calculator, chosen per question through a strict JSON protocol.
+- **Plans its own tool use.** Corpus search, knowledge graph traversal, web search, a structured catalog, a SQL database, and a calculator, chosen per question through a strict JSON protocol.
 - **Runs in parallel.** A question with independent parts is split into sub-questions, each researched by its own agent loop on its own thread, then merged.
-- **Retrieves hybrid.** BM25 keyword scores fused with vector similarity through reciprocal rank fusion.
+- **Retrieves hybrid.** BM25 keyword scores fused with vector similarity through reciprocal rank fusion, with an optional cross-encoder reranker on top.
+- **Queries a database.** Counts, totals, and rankings over records go to `sql_query`: the model writes one SELECT from the schema, and SQLite itself refuses anything that is not a read.
 - **Verifies before answering.** Every claim is checked against the sources it cites, with a refine loop and an honest abstention when the evidence is missing.
+- **Ignores planted instructions.** Text in a document or web page that tries to instruct the model is cut before any model reads it, and every prompt treats sources as data.
 - **Streams live.** Stages, tool calls, and answer tokens arrive over server-sent events, so you watch the agent work.
 - **Remembers.** Multi-turn chat with follow-up rewriting, and a browser-side history of conversations.
 - **Takes your documents.** Drop pdf, md, txt, or html into the console and they are indexed immediately. PDF pages whose charts and tables text extraction would miss can be read as images by a vision model.
@@ -132,12 +135,13 @@ flowchart TB
     API --> RW["Rewrite follow-up questions"]
     RW --> ORCH["Orchestrator<br/>decompose, run branches in parallel, merge"]
     ORCH --> AGENT["Agent loop per branch<br/>plan, call a tool, observe"]
-    AGENT <--> TOOLS["Tools<br/>vector_search, graph_search, web_search,<br/>knowledge_base, calculator"]
+    AGENT <--> TOOLS["Tools<br/>vector_search, graph_search, web_search,<br/>knowledge_base, sql_query, calculator"]
     TOOLS --> IDX[("Vectors and BM25<br/>NumPy")]
     TOOLS --> KG[("Knowledge graph<br/>SQLite or Neo4j")]
     TOOLS --> CAT[("Catalog<br/>JSON")]
+    TOOLS --> DB[("Orders database<br/>SQLite, read-only")]
     TOOLS --> WEB(("Web<br/>DuckDuckGo"))
-    AGENT --> ASM["Context assembly<br/>dedupe, rank fusion, token budget"]
+    AGENT --> ASM["Context assembly<br/>injection filter, dedupe, rank fusion,<br/>optional reranker, token budget"]
     ASM --> SYN["Synthesis<br/>streamed answer with citations"]
     SYN --> VER{"Verifier<br/>every claim vs its sources"}
     VER -- "unsupported claims" --> SYN
@@ -178,11 +182,13 @@ flowchart TD
     R -->|corpus| VS[vector_search<br/>BM25 + vectors]
     R -->|outside world| WS[web_search]
     R -->|facts table| KB[knowledge_base]
+    R -->|counts over records| SQL[sql_query<br/>read-only SELECT]
     R -->|arithmetic| CALC[calculator]
     R -->|done| F([finish])
     VS --> P
     WS --> P
     KB --> P
+    SQL --> P
     CALC --> P
 ```
 
@@ -235,11 +241,11 @@ Each layer only calls the layers below it. Interfaces never touch retrieval dire
 | Interfaces | `cli.py`, `api.py`, `frontend/` | The command line, the REST and SSE API, the web console |
 | Orchestration | `graph/` | Decomposition, parallel branches, shared budget, merge, coverage |
 | Agent | `agent/` | The plan-and-act loop, the JSON protocol, prompts, a tolerant parser |
-| Tools | `tools/` | vector_search, graph_search, visual_search, web_search, knowledge_base, calculator |
+| Tools | `tools/` | vector_search, graph_search, visual_search, web_search, knowledge_base, sql_query, calculator |
 | Knowledge graph | `kg/` | Entity and relation extraction, SQLite or Neo4j store, multi-hop traversal |
-| Retrieval | `retrieval/` | NumPy vector store, BM25, hybrid RRF fusion, page-image late interaction |
+| Retrieval | `retrieval/` | NumPy vector store, BM25, hybrid RRF fusion, cross-encoder reranker, page-image late interaction |
 | Ingestion | `ingestion/` | Loaders for txt, md, html, pdf, and two chunking strategies |
-| Assembly | `assembly/` | Dedupe, cross-tool fusion, re-scoring, token-budget packing |
+| Assembly | `assembly/` | Injection filtering, dedupe, cross-tool fusion, re-scoring, token-budget packing |
 | Verification | `verification/` | Claim splitting, groundedness, refine feedback, the eval judge |
 | Models | `llm/`, `embeddings/` | Provider registry, per-role model router, embedder registry |
 | Config | `config.py` | One dataclass, every setting, read from the environment |
@@ -283,7 +289,7 @@ sequenceDiagram
 1. **Remember.** In a conversation, "and what does it cost?" is rewritten into a standalone question using recent turns.
 2. **Decompose.** The orchestrator decides how many independent sub-questions there are. Usually one.
 3. **Plan and act.** Each branch runs its own loop: the model picks a tool, the tool returns evidence with a rank and a source reference, the observation goes back to the planner. Failures become observations rather than crashes.
-4. **Merge and assemble.** Branch evidence is joined, deduplicated by text hash, fused with RRF across tools, re-scored against the question, and packed into a token budget. The packed order defines the citation numbers.
+4. **Merge and assemble.** Branch evidence is joined, stripped of sentences that try to instruct the model, deduplicated by text hash, fused with RRF across tools, re-scored against the question (by a cross-encoder when one is configured), and packed into a token budget. The packed order defines the citation numbers.
 5. **Synthesise.** The model writes the answer using only the numbered sources, citing as [1] or [2][3]. Tokens stream out as they are produced.
 6. **Verify.** The answer is split into claims, each checked against the sources it cites, lexically offline and with a dedicated model call when one is available.
 7. **Refine or abstain.** Failed claims go back to synthesis with targeted feedback. If the sources do not contain the answer, the assistant returns an explicit insufficient-evidence response, and the verifier treats that honesty as a pass.
@@ -426,6 +432,63 @@ That registers a `visual_search` tool the agent can choose, alongside corpus sea
 
 The honest summary: ColPali is the stronger retriever and the reason to want it is real. It is also a 256M to 3B vision model plus torch, which does not fit in 512 MB of free-tier memory, so a free-tier deployment runs the description path while a local install can run either. Both write into the same page index and both feed the same `visual_search` tool, so switching is one environment variable.
 
+## Asking the database
+
+Some questions are about records, not passages: which customer ordered the most robots, how many orders are still open, what 2025 brought in. Retrieval ranks text. It cannot count or add up rows, so `sql_query` lets the planner ask a database directly.
+
+```text
+$ rag ask "Which customer has ordered the most robots in total?" --trace
+
+-- ANSWER --------------------------------------------------------------
+Database query result: name Nordlicht Logistik, robots ordered 32. [1]
+
+-- SOURCES -------------------------------------------------------------
+  [1] Database query  (sql)
+      sales.sql: SELECT c.name, SUM(o.quantity) AS robots_ordered FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY c.name ORDER BY robots_ordered DESC LIMIT 1
+
+-- AGENT TRACE ---------------------------------------------------------
+  1. sql_query {"sql": "SELECT c.name, SUM(o.quantity) AS robots_ordered FROM orders o JOIN ..."}
+     thought: Counts and totals over records are a database query.
+  2. finish {}
+```
+
+That is the offline mock, which quotes the row as it came back. A real model writes a sentence around it.
+
+- **The model writes the SQL.** The schema and a few worked examples sit in the tool description, so the planner sees them next to the question. The sample database is [`data/structured/sales.sql`](data/structured/sales.sql), fictional customers and orders, loaded into an in-memory SQLite database at startup.
+- **Errors come back as advice.** A failing query returns SQLite's own message ("no such column: revenue") as the observation, so the model fixes the query on its next step instead of guessing.
+- **Every number can be rerun.** The source reference is the query itself.
+- **Your own data.** Point `SQL_DATABASE_PATH` at a `.db`, `.sqlite`, or `.sqlite3` file and it is opened read-only in place. In a `.sql` script, `-- Q:` and `-- SQL:` comment pairs become the worked examples.
+
+Read-only is enforced by SQLite, not by reading the SQL text, because text filters are easy to talk around:
+
+| Attempt | What stops it |
+|---|---|
+| `DELETE`, `UPDATE`, `INSERT`, `CREATE`, `DROP` | An authorizer that allows reads and nothing else |
+| `ATTACH DATABASE`, `PRAGMA` | The same authorizer, plus a `query_only` connection |
+| `SELECT 1; DROP TABLE orders` | One statement per call |
+| `randomblob(900000000)`, `printf`, `load_extension` | Functions come from an allowlist of aggregate, math, text, and date functions |
+| One enormous string, such as `group_concat` over a huge join | A 1 MB cap per value (Python 3.11 and later) |
+| A query that never ends | A progress handler that interrupts it after 2 seconds |
+| A result with a million rows | At most 50 rows come back |
+
+Offline, the mock cannot write SQL, so it runs the worked example a question closely matches, which keeps the three database questions in the golden set deterministic. Known limits: SQLite only, one statement per call, recursive CTEs and functions outside the allowlist are refused along with writes, and on Python 3.10 the 1 MB value cap is not available (the allowlist and time limit still apply).
+
+## Reranking
+
+Before packing, assembly scores every candidate against the question. By default that score comes from the same embedder retrieval used: question and passage are embedded separately, then compared. A cross-encoder reads the two together in one pass instead, which costs a model call per candidate and usually ranks more precisely.
+
+```bash
+pip install -e ".[rerank]"        # sentence-transformers
+# in .env
+RERANKER=cross-encoder
+RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2   # English
+# RERANKER_MODEL=cross-encoder/mmarco-mMiniLMv2-L12-H384-v1   # other languages
+```
+
+The cross-encoder replaces only the similarity term. Rank fusion across tools stays, so a strong hit from one tool still counts: `fused = 0.6 * relevance + 0.4 * RRF`. A reranker that fails mid-question falls back to embedding similarity with a note on stderr, so it can cost precision but never an answer. `rag stats` and `/api/health` report which one is active.
+
+It is off by default because it needs a model download and the offline suite must not. The bundled golden set already scores 11/11 without it, so it cannot show a gain either way: measure on your own corpus before relying on it.
+
 ## Real output
 
 ```text
@@ -445,25 +508,26 @@ Scale plan cost: EUR 649 per robot per month, billed annually. [1]
 
 ## Evaluation
 
-`rag eval` runs a golden set covering document facts, structured lookups, arithmetic routing, and multi-fact answers. Each case declares a category, a difficulty, and the tools it should trigger, so the run scores three things: did the answer contain the fact, did it cite anything, and did the agent reach for the right tools. `--judge` adds graded faithfulness and relevance, from a dedicated judge call with a real model and a deterministic lexical scorer offline.
+`rag eval` runs a golden set covering document facts, structured lookups, database queries, arithmetic routing, and multi-fact answers. Each case declares a category, a difficulty, and the tools it should trigger, so the run scores three things: did the answer contain the fact, did it cite anything, and did the agent reach for the right tools. `--judge` adds graded faithfulness and relevance, from a dedicated judge call with a real model and a deterministic lexical scorer offline.
 
 ```text
-  answer correctness: 8/8
-  answers with citations: 8/8
+  answer correctness: 11/11
+  answers with citations: 11/11
   average groundedness: 100%
-  average latency: 2 ms
-  expected tools called: 8/8
+  average latency: 47 ms
+  expected tools called: 11/11
 
   by category
     calculation          1/1
+    database             3/3
     document-fact        4/4
     multi-fact           1/1
     structured-lookup    2/2
   average faithfulness (judge): 100%
-  average relevance (judge): 85%
+  average relevance (judge): 71%
 ```
 
-The 85% relevance is the honest reading of extractive answers: they carry supporting detail beyond the literal question words, and the lexical scorer counts that against them. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 236-test suite on two Python versions, and a full console build, all without secrets.
+The 71% relevance is the honest reading of extractive answers. The offline mock answers by quoting evidence, and the lexical scorer counts every word that is not in the question against it. Prose answers carry supporting detail beyond the question words (60 to 100% each). The three database answers quote a raw row, "revenue eur 1,857,000", which shares almost no words with the question and scores 20 to 40%. A real model writes a sentence around the row, and `--judge` with a real model switches to a model-based judge. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 287-test suite on two Python versions, and a full console build, all without secrets.
 
 The default golden set covers the English sample documents, which is what CI runs. `eval/golden_set_multilingual.jsonl` covers the expanded corpus with German, Arabic, Chinese, and English questions, and needs the PDFs and multilingual documents ingested first:
 
@@ -487,6 +551,9 @@ Copy `.env.example` to `.env`. Every setting is documented there.
 | `LLM_TEMPERATURE` | float or blank | `0.1` by default. Verifier, judge, and decomposer always run at `0.0` |
 | `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` | URL | Private, self-hosted, or gateway endpoints |
 | `RETRIEVAL_MODE` | `hybrid`, `vector`, `bm25` | `hybrid` fuses BM25 and vector rankings with RRF |
+| `RERANKER` | `none`, `cross-encoder` | Rescore candidates with a cross-encoder, needs the `[rerank]` extra |
+| `RERANKER_MODEL` | model id | Defaults to `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| `SQL_DATABASE_PATH` | path or blank | `.sql` script (in memory) or SQLite file (read-only) for `sql_query`. Blank turns it off |
 | `CHUNK_STRATEGY` | `structure`, `length` | Structure keeps headings and sentences intact, length is a fixed window |
 | `PDF_VISION` | `off`, `auto`, `on` | Read PDF pages as images so charts and tables are indexed |
 | `VISUAL_RETRIEVER` | `description`, `colpali` | How indexed pages are ranked |
@@ -654,20 +721,21 @@ agentic-rag-assistant/
     pipeline.py            # wires the whole flow; start here
     graph/                 # decompose, parallel branches, shared budget, merge
     agent/                 # plan-and-act loop, JSON protocol, prompts, parser
-    tools/                 # vector_search, graph_search, visual_search, web_search, knowledge_base, calculator
-    retrieval/             # NumPy vector store, BM25, hybrid RRF, late interaction, reindex
+    tools/                 # vector_search, graph_search, visual_search, web_search, knowledge_base, sql_query, calculator
+    retrieval/             # NumPy vector store, BM25, hybrid RRF, reranker, late interaction, reindex
     kg/                    # knowledge graph: extraction, SQLite store, traversal
     ingestion/             # loaders, chunking strategies, PDF page-image reading
-    assembly/              # dedupe, fusion, re-scoring, token packing
+    assembly/              # injection filter, dedupe, fusion, re-scoring, token packing
+    core/                  # shared types, language detection, tokeniser, injection patterns
     verification/          # claim checks, refine feedback, eval judge
     llm/  embeddings/      # provider registry, model router, embedders
     cli.py  api.py         # command line, REST + SSE
   frontend/                # React console, PWA manifest and icons
-  data/                    # sample corpus, structured catalog, and the demo PDF
+  data/                    # sample corpus, structured catalog, orders database script, and the demo PDF
   docs/                    # architecture, deployment, setup guide, command reference, screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
-  tests/                   # 236 tests, offline by design
+  tests/                   # 287 tests, offline by design
   .github/                 # CI, dependabot, templates
 ```
 
@@ -680,7 +748,7 @@ curl -s -X POST localhost:8000/api/chat -H "content-type: application/json" \
      -d '{"question": "How long does it run on a charge?", "history": []}'
 ```
 
-`/api/health` reports per-component status, including a live probe of the model backend, and flips to `degraded` when anything is down, so it works as a real readiness check. `/api/chat/stream` takes the same body and answers with server-sent events. `/api/ask` remains for one-shot calls. With `API_AUTH_TOKEN` set, every endpoint except `/api/health` needs `Authorization: Bearer <token>`.
+`/api/health` reports per-component status, including a live probe of the model backend, the SQL database, and the active reranker, and flips to `degraded` when anything is down, so it works as a real readiness check. `/api/chat/stream` takes the same body and answers with server-sent events. `/api/ask` remains for one-shot calls. With `API_AUTH_TOKEN` set, every endpoint except `/api/health` needs `Authorization: Bearer <token>`.
 
 ## Docker
 
@@ -688,7 +756,7 @@ curl -s -X POST localhost:8000/api/chat -H "content-type: application/json" \
 docker compose up --build
 ```
 
-One image with the console built in and the sample corpus pre-indexed, on port 8000. The index, graph, and uploads live in a named volume, so they survive rebuilds. Out of the box the container runs on the offline mock, because `.env` is kept out of the image on purpose. To use your own keys, uncomment `env_file` in `docker-compose.yml`; if your `.env` selects the multilingual embedder, set the `EXTRAS` build argument to `[multilingual]` too.
+One image with the console built in and the sample corpus pre-indexed, on port 8000. It runs as an unprivileged user (uid 10001) that can only write to `storage/`, and Docker's health check polls `/api/health`. The index, graph, and uploads live in a named volume, so they survive rebuilds. A volume created by an image older than 3.14.0 is owned by root, so fix its ownership once after upgrading: `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage`. Out of the box the container runs on the offline mock, because `.env` is kept out of the image on purpose. To use your own keys, uncomment `env_file` in `docker-compose.yml`; if your `.env` selects the multilingual embedder, set the `EXTRAS` build argument to `[multilingual]` too.
 
 ## Deployment and mobile
 
@@ -696,7 +764,15 @@ One image with the console built in and the sample corpus pre-indexed, on port 8
 
 ## Security
 
-Local-first by default: no telemetry, and with Ollama nothing leaves your machine except the web searches the agent chooses to run. Before exposing the server, set `API_AUTH_TOKEN` and put TLS in front of it. Uploads are extension-whitelisted, size-capped, and filename-sanitised. Details and the reporting contact are in [`SECURITY.md`](SECURITY.md).
+Local-first by default: no telemetry, and with Ollama nothing leaves your machine except the web searches the agent chooses to run. The console's fonts are served by the app itself, so opening it contacts no third party. Before exposing the server, set `API_AUTH_TOKEN` and put TLS in front of it.
+
+- **Prompt injection.** A web page or an uploaded document can carry text aimed at the model ("ignore previous instructions and ..."). Two layers stop it: every prompt says sources and tool results are data, not instructions, and sentences that look like instructions are cut from evidence and observations before any model reads them, leaving a visible `[removed: ...]` marker in the source. The patterns are narrow on purpose and match nothing in the sample corpora, because a false positive would silently delete a real sentence.
+- **Read-only SQL.** `sql_query` can only read, enforced by SQLite itself, with a function allowlist, a value size cap, a time limit, and a row cap. See [Asking the database](#asking-the-database).
+- **Token check.** The API token is compared in constant time, so response timing cannot leak it a character at a time.
+- **Uploads and ingest.** Uploads are extension-whitelisted, size-capped, and filename-sanitised. `/api/ingest` only reads folders listed in `INGEST_ROOTS`.
+- **Not built in:** rate limiting and per-user access control. Put the server behind a reverse proxy that does both before sharing it.
+
+Details and the reporting contact are in [`SECURITY.md`](SECURITY.md).
 
 ## Design decisions
 
@@ -710,6 +786,8 @@ Local-first by default: no telemetry, and with Ollama nothing leaves your machin
 
 **Isolated branch state.** Each branch owns its evidence, its steps, and its errors, and only a summary crosses back out. The step budget is the deliberate exception: one tracker shared by every branch, behind a lock, because `used += 1` is not atomic and parallel branches would otherwise overrun the cap.
 
+**Enforce limits in the engine, not in a filter.** The SQL tool does not scan queries for dangerous keywords. SQLite's authorizer refuses anything but a read, whatever the text looks like, so there is no clever spelling to find. The injection filter is the one place text matching is used, and it is a second layer behind the prompts, not the only one.
+
 **Verification is the feature.** Most RAG demos stop at "answer with sources". Here the answer is split into claims, each checked against what it cites, failed claims trigger a rewrite with targeted feedback, and unanswerable questions get an explicit abstention. Honesty is cheaper than a confident hallucination.
 
 **Honest limitations.** Offline, the verifier and judge are lexical approximations, useful and deterministic but not semantic judges. Real models switch both to model-based checks. The hashed embedder is a demo device, use `sbert` for real semantic quality. The vector store is exact NumPy search, right up to tens of thousands of chunks and intentionally not a vector database. Follow-up rewriting and decomposition need a real model. And 7B-class instruct models handle the JSON tool loop well, tiny models sometimes do not.
@@ -717,7 +795,7 @@ Local-first by default: no telemetry, and with Ollama nothing leaves your machin
 ## Development
 
 ```bash
-pytest                  # 236 tests, all offline
+pytest                  # 287 tests, all offline
 ruff check src tests    # lint
 rag eval                # golden set, non-zero exit on regression
 rag eval --judge        # adds faithfulness and relevance

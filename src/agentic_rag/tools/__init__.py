@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
+import sys
+from pathlib import Path
+
 from agentic_rag.config import Settings
 from agentic_rag.retrieval.hybrid import HybridSearcher
 from agentic_rag.tools.base import Tool
@@ -29,6 +33,15 @@ def build_default_tools(
     tools[knowledge.spec.name] = knowledge
     calculator = CalculatorTool()
     tools[calculator.spec.name] = calculator
+    if settings.sql_database_path and Path(settings.sql_database_path).is_file():
+        from agentic_rag.tools.sql import SQLTool
+
+        try:
+            sql = SQLTool(settings.sql_database_path)
+            tools[sql.spec.name] = sql
+        except (sqlite3.Error, OSError, UnicodeDecodeError) as exc:
+            # a broken database costs this one tool, not the assistant
+            print(f"note: sql_query disabled, {settings.sql_database_path}: {exc}", file=sys.stderr)
     # offered only once the graph actually holds edges, so the planner never
     # sees a tool whose only possible answer is 'nothing here'
     if graph_store is not None and chunk_lookup is not None and graph_store.edge_count:

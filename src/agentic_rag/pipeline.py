@@ -35,6 +35,7 @@ from agentic_rag.llm.router import ModelRouter
 from agentic_rag.retrieval.colpali import build_encoder
 from agentic_rag.retrieval.hybrid import HybridSearcher
 from agentic_rag.retrieval.late_interaction import PageIndex, PageRecord
+from agentic_rag.retrieval.rerank import build_reranker
 from agentic_rag.retrieval.vector_store import VectorStore
 from agentic_rag.tools import build_default_tools
 from agentic_rag.verification.verifier import Verifier, feedback_from_report
@@ -52,6 +53,7 @@ class AgenticRAG:
         self.searcher = HybridSearcher(self.store, self.settings.retrieval_mode)
         self.pages = PageIndex(self.settings.storage_path / "pages")
         self.encoder = build_encoder(self.settings)
+        self.reranker = build_reranker(self.settings)
         self._chunk_index: dict | None = None
         self._graph_extractor = None
         # named for what it is: `self.graph` is already the orchestration
@@ -94,18 +96,19 @@ class AgenticRAG:
             return None
 
     def close(self) -> None:
-        """Release the graph connection.
+        """Release the graph and database connections.
 
         Only matters on Windows, where an open SQLite file cannot be
         deleted, so a pipeline built over a temporary directory blocks its
         own cleanup.
         """
-        graph = getattr(self, "knowledge_graph", None)
-        if graph is not None:
-            try:
-                graph.close()
-            except Exception:  # noqa: BLE001 - closing must not raise
-                pass
+        sql = getattr(self, "tools", {}).get("sql_query")
+        for resource in (getattr(self, "knowledge_graph", None), sql):
+            if resource is not None:
+                try:
+                    resource.close()
+                except Exception:  # noqa: BLE001 - closing must not raise
+                    pass
 
     def chunk_by_id(self, chunk_id: str):
         """Look up one chunk, for tools that hold chunk ids rather than text."""
@@ -295,7 +298,7 @@ class AgenticRAG:
 
         emit("stage", {"name": "assembling"})
         t0 = perf_counter()
-        packed = assemble(pipeline_question, evidence, self.embedder, self.settings)
+        packed = assemble(pipeline_question, evidence, self.embedder, self.settings, self.reranker)
         timings["assemble_ms"] = int((perf_counter() - t0) * 1000)
 
         emit("stage", {"name": "synthesizing"})

@@ -17,6 +17,7 @@ const COMPONENT_NAMES = {
   llm: "Language model",
   index: "Document index",
   catalog: "Product catalog",
+  database: "SQL database",
   web_search: "Web search",
 };
 

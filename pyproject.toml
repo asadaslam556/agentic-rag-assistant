@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentic-rag-assistant"
-version = "3.13.0"
+version = "3.14.0"
 description = "Agentic RAG knowledge assistant: plans tool use, retrieves evidence, verifies claims, and answers with citations."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,8 @@ sbert = ["sentence-transformers>=2.6"]
 # multilingual embeddings (EMBEDDINGS_PROVIDER=multilingual). Same package as
 # sbert, listed separately so the intent is obvious in install instructions
 multilingual = ["sentence-transformers>=2.6"]
+# cross-encoder reranking in context assembly (RERANKER=cross-encoder)
+rerank = ["sentence-transformers>=2.6"]
 # optional graph backend; the default SQLite store needs nothing
 neo4j = ["neo4j>=5.0"]
 

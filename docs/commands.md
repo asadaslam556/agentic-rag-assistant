@@ -119,8 +119,13 @@ rag ask "What does the Scale plan cost per robot per month?" --trace
 rag eval
 ```
 
-You get a cited answer, a passed verification line, the agent trace, and 8/8
-on the golden set, with no model installed.
+You get a cited answer, a passed verification line, the agent trace, and
+11/11 on the golden set, with no model installed. A database question works
+the same way:
+
+```powershell
+rag ask "Which customer has ordered the most robots in total?" --trace
+```
 
 ## Step 8. Attach a real model
 
@@ -514,7 +519,7 @@ rag ask "question" --trace   with the full agent trace
 rag ask "question" --json    machine-readable output
 rag chat                     multi-turn session with memory
 rag serve                    API on :8000, plus the console when built
-rag stats                    active provider, model routing, embedder, index size
+rag stats                    active provider, model routing, embedder, reranker, tools, index size
 rag models                   what the configured endpoint actually serves
 rag eval                     golden set, non-zero exit on regression
 rag eval --judge             adds faithfulness and relevance scores
@@ -555,6 +560,9 @@ LLM_MODEL_DEEP    stronger model for synthesize, verify, vision
 LLM_MODEL_<ROLE>  pin one role, beats the two settings above
 LLM_TEMPERATURE   0.1 by default. Blank omits the field for models that reject it
 RETRIEVAL_MODE    hybrid | vector | bm25
+RERANKER          none | cross-encoder (pip install -e ".[rerank]")
+RERANKER_MODEL    defaults to cross-encoder/ms-marco-MiniLM-L-6-v2
+SQL_DATABASE_PATH .sql script or SQLite file for sql_query, blank turns it off
 CHUNK_STRATEGY    structure | length
 PDF_VISION        off | auto | on, read PDF pages as images
 VISUAL_RETRIEVER  description | colpali, how indexed pages are ranked
@@ -583,7 +591,7 @@ Start it with `rag serve`. Interactive docs at <http://localhost:8000/docs>.
 
 | Route | Method | What it does |
 | --- | --- | --- |
-| `/api/health` | GET | Per-component status: model backend, index, catalog, web search. Never needs auth |
+| `/api/health` | GET | Per-component status: model backend, index, catalog, SQL database, web search, plus the active reranker. Never needs auth |
 | `/api/chat` | POST | Ask a question, optionally with history. Returns the full answer payload |
 | `/api/chat/stream` | POST | Same body, answers as server-sent events |
 | `/api/ask` | POST | One-shot question, kept for older clients |

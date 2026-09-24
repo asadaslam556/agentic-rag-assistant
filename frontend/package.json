@@ -1,7 +1,7 @@
 {
   "name": "agentic-rag-console",
   "private": true,
-  "version": "3.13.0",
+  "version": "3.14.0",
   "description": "Web console for the agentic RAG knowledge assistant",
   "author": "Asad Aslam",
   "license": "MIT",

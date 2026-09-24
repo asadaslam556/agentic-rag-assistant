@@ -6,3 +6,6 @@
 {"id": "arithmetic", "question": "What is 23 * 649?", "expected_substrings": ["14,927"], "category": "calculation", "difficulty": "medium", "expected_tools": ["calculator"]}
 {"id": "fleet-size", "question": "How many robots does Auralis have deployed?", "expected_substrings": ["1,850"], "category": "structured-lookup", "difficulty": "medium", "expected_tools": ["knowledge_base"]}
 {"id": "deployment-time", "question": "How long does a typical Atlas deployment take?", "expected_substrings": ["2 to 6 weeks"], "category": "document-fact", "difficulty": "easy", "expected_tools": ["vector_search"]}
+{"id": "top-customer", "question": "Which customer has ordered the most robots in total?", "expected_substrings": ["Nordlicht", "32"], "category": "database", "difficulty": "medium", "expected_tools": ["sql_query"]}
+{"id": "open-orders", "question": "How many customer orders are still open?", "expected_substrings": ["open orders 2"], "category": "database", "difficulty": "medium", "expected_tools": ["sql_query"]}
+{"id": "revenue-2025", "question": "What was the total revenue from orders placed in 2025?", "expected_substrings": ["1,857,000"], "category": "database", "difficulty": "hard", "expected_tools": ["sql_query"]}

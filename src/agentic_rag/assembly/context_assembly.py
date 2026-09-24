@@ -4,12 +4,15 @@ Evidence arrives from several tool calls with incomparable scores
 (cosine similarities, web ranks, structured match counts). Assembly
 makes them comparable:
 
+0. Cut sentences that look like instructions to the model (see
+   core/injection.py), so no later stage reads them.
 1. Deduplicate by normalized text hash (keeping the best raw score).
 2. Reciprocal rank fusion across the ranked list of each tool call:
    rrf(e) = sum over calls of 1 / (60 + rank_in_call).
-3. Semantic similarity between the question and each evidence text,
-   using the same embedder as retrieval, mapped to [0, 1].
-4. Fused score = 0.6 * semantic + 0.4 * normalized RRF.
+3. Relevance of each evidence text to the question, in [0, 1]: a
+   cross-encoder when RERANKER is set, otherwise the similarity from the
+   same embedder retrieval used.
+4. Fused score = 0.6 * relevance + 0.4 * normalized RRF.
 5. Greedy packing into the context token budget (top item always fits).
 
 The packed order defines the citation numbering [1..n] used by
@@ -19,8 +22,10 @@ synthesis and verification.
 from __future__ import annotations
 
 import hashlib
+import sys
 
 from agentic_rag.config import Settings
+from agentic_rag.core.injection import strip_injections
 from agentic_rag.core.textutils import approx_tokens, normalize_ws
 from agentic_rag.core.types import Evidence
 from agentic_rag.embeddings.base import Embedder
@@ -34,9 +39,14 @@ def assemble(
     evidence: list[Evidence],
     embedder: Embedder,
     settings: Settings,
+    reranker=None,
 ) -> list[Evidence]:
     if not evidence:
         return []
+
+    # 0. drop instructions aimed at the model
+    for item in evidence:
+        item.text, _ = strip_injections(item.text)
 
     # 1. deduplicate
     unique: list[Evidence] = []
@@ -61,15 +71,21 @@ def assemble(
             rrf[item.id] += 1.0 / (_RRF_K + position)
     max_rrf = max(rrf.values())
 
-    # 3. semantic similarity to the question
-    matrix = embedder.embed_texts([item.text for item in unique])
-    query_vector = embedder.embed_query(question)
-    similarities = matrix @ query_vector
+    # 3. relevance to the question
+    relevance = None
+    if reranker is not None:
+        try:
+            relevance = reranker.score(question, [item.text for item in unique])
+        except Exception as exc:  # noqa: BLE001 - a reranker failure costs precision, not the answer
+            print(f"note: reranker failed, using embedding similarity: {str(exc)[:200]}", file=sys.stderr)
+    if relevance is None:
+        matrix = embedder.embed_texts([item.text for item in unique])
+        query_vector = embedder.embed_query(question)
+        relevance = [(float(similarity) + 1.0) / 2.0 for similarity in matrix @ query_vector]
 
     # 4. fuse
-    for item, similarity in zip(unique, similarities, strict=True):
-        semantic = (float(similarity) + 1.0) / 2.0
-        item.fused_score = round(0.6 * semantic + 0.4 * (rrf[item.id] / max_rrf), 4)
+    for item, score in zip(unique, relevance, strict=True):
+        item.fused_score = round(0.6 * score + 0.4 * (rrf[item.id] / max_rrf), 4)
     unique.sort(key=lambda entry: -entry.fused_score)
 
     # 5. pack into the token budget

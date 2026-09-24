@@ -4,6 +4,7 @@ const TYPE_LABELS = {
   graph: "graph",
   web: "web",
   structured: "catalog",
+  sql: "database",
   calculation: "calculation",
 };
 

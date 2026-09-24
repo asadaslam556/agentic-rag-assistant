@@ -26,6 +26,7 @@ const ACTION_LABELS = {
   vector_search: "document search",
   web_search: "web search",
   knowledge_base: "catalog lookup",
+  sql_query: "database query",
   graph_search: "graph search",
   visual_search: "page image search",
   calculator: "calculator",

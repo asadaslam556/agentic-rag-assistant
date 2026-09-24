@@ -9,7 +9,7 @@
 
 The [README](../README.md) covers what the assistant does. This covers how, and the trade-offs behind it.
 
-**On this page:** [Two levels](#two-levels-not-one) · [Branch state](#why-branches-keep-their-own-state) · [Concurrency](#what-parallelism-exposed) · [Decomposer](#the-decomposers-three-layers) · [Ingestion](#ingestion) · [Retrieval and assembly](#retrieval-and-context-assembly) · [Verification](#verification-and-the-refine-loop) · [Streaming](#streaming) · [Providers](#the-provider-layer) · [Model routing](#one-model-per-job) · [Knowledge graph](#the-knowledge-graph) · [Page images](#reading-pages-as-images) · [Testing](#testing-philosophy)
+**On this page:** [Two levels](#two-levels-not-one) · [Branch state](#why-branches-keep-their-own-state) · [Concurrency](#what-parallelism-exposed) · [Decomposer](#the-decomposers-three-layers) · [Ingestion](#ingestion) · [Retrieval and assembly](#retrieval-and-context-assembly) · [Text-to-SQL](#text-to-sql) · [Verification](#verification-and-the-refine-loop) · [Streaming](#streaming) · [Providers](#the-provider-layer) · [Model routing](#one-model-per-job) · [Knowledge graph](#the-knowledge-graph) · [Page images](#reading-pages-as-images) · [Testing](#testing-philosophy)
 
 ## Two levels, not one
 
@@ -25,12 +25,14 @@ flowchart TD
     ROUTE -->|relationships| GS["graph_search<br/>multi-hop traversal"]
     ROUTE -->|outside world| WS["web_search"]
     ROUTE -->|facts table| KB["knowledge_base"]
+    ROUTE -->|counts over records| SQL["sql_query<br/>read-only SELECT"]
     ROUTE -->|arithmetic| CALC["calculator"]
     ROUTE -->|enough evidence| FIN(["finish"])
     VS --> PLAN
     GS --> PLAN
     WS --> PLAN
     KB --> PLAN
+    SQL --> PLAN
     CALC --> PLAN
 ```
 
@@ -147,15 +149,44 @@ flowchart TD
     BM --> RRF["Reciprocal rank fusion"]
     VEC --> RRF
     RRF --> EV["Evidence from every tool call"]
-    OTHER["graph, web, catalog,<br/>calculator results"] --> EV
-    EV --> DD["Dedupe by text hash"]
+    OTHER["graph, web, catalog,<br/>database, calculator results"] --> EV
+    EV --> INJ["Cut instructions<br/>aimed at the model"]
+    INJ --> DD["Dedupe by text hash"]
     DD --> FUSE["Cross-tool rank fusion"]
-    FUSE --> RS["Re-score against the question"]
-    RS --> PACK["Pack into the token budget"]
+    FUSE --> RS{"Re-score against<br/>the question"}
+    RS -->|RERANKER=none| BI["Embedding similarity"]
+    RS -->|RERANKER=cross-encoder| CE["Cross-encoder"]
+    BI --> PACK["Pack into the token budget"]
+    CE --> PACK
     PACK --> SRC(["Numbered sources<br/>the order sets citation numbers"])
 ```
 
 Rank fusion is the reason hybrid retrieval needs no score calibration. BM25 scores and cosine similarities live on different scales, so instead of adding them, RRF adds `1 / (k + rank)` from each list. A chunk ranked well by both wins, and a chunk only one method found still gets in. The packed order is final: the sources the model sees as `[1]`, `[2]`, `[3]` are the same numbers the console links to.
+
+The fused score is `0.6 * relevance + 0.4 * normalised RRF`. Relevance comes from the embedder by default: question and passage embedded separately, then compared. `RERANKER=cross-encoder` swaps in a model that reads the pair together, which usually ranks more precisely at the cost of a model pass per candidate. It replaces only the relevance term, so fusion across tools still counts. The cross-encoder is loaded once at startup, and if it raises mid-question assembly falls back to the embedder, so a reranker problem costs precision, never an answer.
+
+Injection filtering runs first so no later stage, and no model, reads the removed text. It changes nothing on text without a match, which keeps English retrieval, the mock, and the golden-set eval byte-identical. The same filter runs over tool observations in the orchestrator, because the planner chooses the next search from them and a planted instruction must not steer it.
+
+## Text-to-SQL
+
+```mermaid
+flowchart LR
+    Q(["Question"]) --> PLAN["Planner<br/>sees schema and examples"]
+    PLAN -->|"one SELECT"| SQL["sql_query"]
+    SQL --> AUTH{"SQLite authorizer<br/>reads only"}
+    AUTH -->|refused or wrong| ERR["Error as observation"]
+    ERR --> PLAN
+    AUTH -->|allowed| ROWS["At most 50 rows<br/>within 2 seconds"]
+    ROWS --> EV(["Evidence<br/>cites the query"])
+```
+
+The planner writes the SQL itself: the schema and a few worked examples are part of the tool description, so they sit next to the question in the planning prompt. No separate text-to-SQL model call exists, and none is needed, because the agent loop already provides the retry: a failing query comes back as an observation carrying SQLite's own error, and the planner fixes it on the next step.
+
+Safety is enforced by the engine rather than by reading the query. An authorizer callback allows `SELECT`, `READ`, and `FUNCTION` actions and denies everything else, so writes, schema changes, `ATTACH`, and `PRAGMA` fail before they run whatever the text looks like. The connection is also `query_only`, `execute()` refuses stacked statements, and a progress handler interrupts any query after two seconds. A `.sql` script is loaded into an in-memory database, so the sample data lives in git as text and nothing is written to disk; a `.db` file is opened with `mode=ro`.
+
+One connection serves every branch, and SQLite connections are not safe to use from two threads at once, so queries go through a lock, like the other shared state in [Branch state](#why-branches-keep-their-own-state).
+
+Offline, the mock cannot write SQL. It runs the worked example a question closely matches (at least two shared content words, covering at least 60% of the example's), which is strict on purpose: "How many robots does Auralis have deployed?" shares one word with an example and stays on the catalog.
 
 ## Verification and the refine loop
 

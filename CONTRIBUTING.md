@@ -34,7 +34,7 @@ flowchart TD
 ```bash
 pytest                     # the whole suite must pass
 ruff check src tests       # zero findings
-rag ingest data/sample_docs && rag eval   # golden set must stay at 8/8,
+rag ingest data/sample_docs && rag eval   # golden set must stay at 11/11,
                                          # including expected tools
 cd frontend && npm run build              # the console must build
 python scripts/check_text.py              # style rules for text files

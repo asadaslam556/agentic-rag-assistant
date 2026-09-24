@@ -15,8 +15,10 @@ folders on the server, limited to INGEST_ROOTS and the uploads folder;
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
+import mimetypes
 import os
 import queue
 import re
@@ -28,6 +30,7 @@ from agentic_rag.config import Settings
 from agentic_rag.ingestion.loaders import SUPPORTED_EXTENSIONS
 from agentic_rag.llm.providers import ProviderError
 from agentic_rag.pipeline import AgenticRAG
+from agentic_rag.tools.sql import SQLTool
 
 # FastAPI resolves endpoint annotations against this module's globals. With
 # `from __future__ import annotations` above, every annotation is a string, so
@@ -85,6 +88,29 @@ class IngestRequest(BaseModel):
 # so hoisting it out sidesteps the warning without changing any behavior.
 _UPLOAD_FILES = File(...)
 
+# Windows' registry often lacks this type, and StaticFiles would then send
+# fonts as application/octet-stream.
+mimetypes.add_type("font/woff2", ".woff2")
+
+
+class _ConsoleFiles(StaticFiles):
+    """The built console, with cache headers that survive an upgrade.
+
+    Vite names everything under assets/ by content hash, so those files never
+    change and can be cached for a year. Everything else, index.html above
+    all, must be revalidated: a browser that reuses an old index.html asks for
+    hashed files the rebuild deleted and shows a blank page.
+    """
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        # path uses the OS separator on Windows
+        if path.replace("\\", "/").startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
 
 def _public_answer(answer) -> dict:
     """Answer payload with server filesystem paths swapped for fetchable URLs.
@@ -125,7 +151,10 @@ def create_app(pipeline: AgenticRAG | None = None):
     def check_auth(authorization: str | None = Header(default=None)) -> None:
         if not auth_token:
             return
-        if authorization != f"Bearer {auth_token}":
+        # constant time: a plain != stops at the first wrong character, and
+        # that timing difference can leak the token one character at a time
+        supplied = (authorization or "").encode("utf-8")
+        if not hmac.compare_digest(supplied, f"Bearer {auth_token}".encode()):
             raise HTTPException(status_code=401, detail="Missing or invalid API token.")
 
     protected = [Depends(check_auth)]
@@ -190,6 +219,20 @@ def create_app(pipeline: AgenticRAG | None = None):
                 "detail": f"{catalog} not found, the knowledge_base tool will return nothing",
             }
 
+        sql_tool = rag.tools.get("sql_query")
+        if isinstance(sql_tool, SQLTool):
+            components["database"] = {
+                "status": "ok",
+                "detail": f"{sql_tool.path.name}, {len(sql_tool.tables)} tables, read-only",
+            }
+        elif rag.settings.sql_database_path:
+            components["database"] = {
+                "status": "down",
+                "detail": f"{rag.settings.sql_database_path} could not be opened, sql_query is off",
+            }
+        else:
+            components["database"] = {"status": "ok", "detail": "disabled (SQL_DATABASE_PATH is blank)"}
+
         provider = rag.settings.search_provider
         if provider == "none":
             components["web_search"] = {"status": "ok", "detail": "disabled (SEARCH_PROVIDER=none)"}
@@ -227,6 +270,7 @@ def create_app(pipeline: AgenticRAG | None = None):
             "embedder": rag.embedder.name,
             "search_provider": provider,
             "retrieval_mode": rag.settings.retrieval_mode,
+            "reranker": rag.reranker.name if rag.reranker is not None else "none",
             "chunks_indexed": chunk_count,
             "tools": list(rag.tools),
             "auth_required": bool(auth_token),
@@ -388,6 +432,6 @@ def create_app(pipeline: AgenticRAG | None = None):
         }
 
     if FRONTEND_DIST.exists():
-        app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="console")
+        app.mount("/", _ConsoleFiles(directory=FRONTEND_DIST, html=True), name="console")
 
     return app

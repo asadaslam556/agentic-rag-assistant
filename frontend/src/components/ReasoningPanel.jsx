@@ -11,6 +11,7 @@ const ACTIONS = {
   visual_search: { label: "Searched page images", Icon: SearchIcon },
   web_search: { label: "Searched the web", Icon: GlobeIcon },
   knowledge_base: { label: "Looked up the catalog", Icon: TableIcon },
+  sql_query: { label: "Queried the database", Icon: TableIcon },
   calculator: { label: "Calculated", Icon: CalculatorIcon },
   finish: { label: "Ready to answer", Icon: CheckIcon },
 };
