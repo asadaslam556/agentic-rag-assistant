@@ -1,3 +1,5 @@
+<img src="docs/logo.png" alt="Agentic RAG logo: a robot reading documents next to a RAG speech bubble" width="120" align="right">
+
 # Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml)
