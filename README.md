@@ -1,7 +1,7 @@
 # Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asadaslam556/agentic-rag-assistant/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-287%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
+[![Tests](https://img.shields.io/badge/tests-288%20passing-brightgreen?logo=pytest&logoColor=white)](tests)
 [![Eval](https://img.shields.io/badge/eval-11%2F11%20golden%20set-brightgreen)](eval/golden_set.jsonl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -527,7 +527,7 @@ Scale plan cost: EUR 649 per robot per month, billed annually. [1]
   average relevance (judge): 71%
 ```
 
-The 71% relevance is the honest reading of extractive answers. The offline mock answers by quoting evidence, and the lexical scorer counts every word that is not in the question against it. Prose answers carry supporting detail beyond the question words (60 to 100% each). The three database answers quote a raw row, "revenue eur 1,857,000", which shares almost no words with the question and scores 20 to 40%. A real model writes a sentence around the row, and `--judge` with a real model switches to a model-based judge. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 287-test suite on two Python versions, and a full console build, all without secrets.
+The 71% relevance is the honest reading of extractive answers. The offline mock answers by quoting evidence, and the lexical scorer counts every word that is not in the question against it. Prose answers carry supporting detail beyond the question words (60 to 100% each). The three database answers quote a raw row, "revenue eur 1,857,000", which shares almost no words with the question and scores 20 to 40%. A real model writes a sentence around the row, and `--judge` with a real model switches to a model-based judge. The eval exits non-zero on any regression, and CI runs it on every push next to ruff, the 288-test suite on two Python versions, and a full console build, all without secrets.
 
 The default golden set covers the English sample documents, which is what CI runs. `eval/golden_set_multilingual.jsonl` covers the expanded corpus with German, Arabic, Chinese, and English questions, and needs the PDFs and multilingual documents ingested first:
 
@@ -735,7 +735,7 @@ agentic-rag-assistant/
   docs/                    # architecture, deployment, setup guide, command reference, screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
-  tests/                   # 287 tests, offline by design
+  tests/                   # 288 tests, offline by design
   .github/                 # CI, dependabot, templates
 ```
 
@@ -795,7 +795,7 @@ Details and the reporting contact are in [`SECURITY.md`](SECURITY.md).
 ## Development
 
 ```bash
-pytest                  # 287 tests, all offline
+pytest                  # 288 tests, all offline
 ruff check src tests    # lint
 rag eval                # golden set, non-zero exit on regression
 rag eval --judge        # adds faithfulness and relevance

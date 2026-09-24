@@ -151,7 +151,9 @@ class SQLTool(Tool):
                 cursor = self._connection.execute(sql)
                 columns = [column[0] for column in cursor.description or []]
                 rows = cursor.fetchmany(MAX_ROWS + 1)
-            except sqlite3.Error as exc:
+            # Python 3.10 and 3.11 report stacked statements as sqlite3.Warning,
+            # which does not inherit from sqlite3.Error
+            except (sqlite3.Error, sqlite3.Warning) as exc:
                 return ToolResult(
                     evidence=[],
                     observation=(

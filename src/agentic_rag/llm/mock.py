@@ -161,6 +161,14 @@ class MockLLM(LLMClient):
                 )
             return action("Search the ingested corpus first.", "vector_search", {"query": question})
 
+        # a database result is the exact answer; searching the web after it only
+        # adds text that can outrank the row, and makes the eval depend on the
+        # network whenever the question happens to mention a year
+        if "sql_query" in used_tools:
+            return json.dumps(
+                {"thought": "The database answered it exactly.", "action": "finish", "action_input": {}}
+            )
+
         if used_tools == ["knowledge_base"] and available("vector_search"):
             return action(
                 "Cross-check the structured record against the document corpus.",

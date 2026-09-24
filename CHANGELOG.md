@@ -85,7 +85,9 @@ to embedding similarity. `rag stats` and `/api/health` show which is active.
   `docs/commands.md` the new settings.
 - Stale badges fixed: React 19, not 18.
 - `scripts/check_text.py` now checks `.sql` files too.
-- Suite: 236 to 287.
+- `.env.example` documents `GRAPH_EXTRACT_MAX_TOKENS` and
+  `GRAPH_MAX_CONSECUTIVE_FAILURES`, which existed but were missing there.
+- Suite: 236 to 288.
 
 ## 3.13.0
 

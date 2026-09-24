@@ -77,7 +77,9 @@ def test_anything_but_a_read_is_refused(tool, hostile):
 def test_functions_that_manufacture_or_reach_outside_are_refused(tool, hostile):
     result = tool.run(sql=hostile)
     assert result.evidence == []
-    assert "not authorized" in result.observation
+    # older SQLite builds (Python 3.10's) lack format() entirely and refuse it
+    # before the authorizer runs; either way the call must not execute
+    assert "not authorized" in result.observation or "no such function" in result.observation
 
 
 def test_the_everyday_functions_still_work(tool):
@@ -157,6 +159,21 @@ def test_the_mock_runs_the_closest_worked_example():
     # sharing one word with an example is not enough: this stays on the catalog
     assert match_sql_example(system, "How many robots does Auralis have deployed?") == ""
     assert match_sql_example(system, "What was SAP cloud revenue growth in Q1 2024?") == ""
+
+
+def test_the_mock_does_not_search_the_web_after_the_database_answered():
+    """CI runs the eval with web search on. A question that mentions a year
+    used to go on to the web, and a web sentence then replaced the row."""
+    import json
+
+    from agentic_rag.llm.mock import MockLLM
+
+    system = "## MODE: PLAN\n- web_search: search the web\n" + SQLTool(SAMPLE).spec.render()
+    messages = [
+        {"role": "user", "content": "QUESTION: What was the total revenue from orders placed in 2025?"},
+        {"role": "user", "content": "OBSERVATION 1 (sql_query): Database query result: revenue eur 1,857,000."},
+    ]
+    assert json.loads(MockLLM()._plan(system, messages))["action"] == "finish"
 
 
 def test_the_tool_is_only_offered_when_the_database_loads(tmp_path, capsys):

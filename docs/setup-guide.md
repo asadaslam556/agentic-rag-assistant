@@ -77,7 +77,7 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 287 tests, all offline
+pytest                        # 288 tests, all offline
 ruff check src tests          # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 11/11 expected
