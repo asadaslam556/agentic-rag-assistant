@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Model routing and providers",
+    "quality_profile": "showcase",
+    "repository": { "url": "https://github.com/asadaslam556/agentic-rag-assistant", "provider": "github", "link_mode": "web", "revision": "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3" },
+    "views": [
+      { "id": "roles", "label": "Roles to a model", "focus": ["fast", "deep", "router"], "note": "Each pipeline role asks the router for its own client." },
+      { "id": "providers", "label": "Providers", "focus": ["registry", "anthropic", "openai", "auto"], "note": "LLM_PROVIDER picks one registered builder." },
+      { "id": "fallback", "label": "Offline fallback", "focus": ["auto", "ollama", "mock"], "note": "auto uses a local Ollama when it answers, otherwise the mock." }
+    ]
+  },
+  "components": [
+    { "id": "fast", "type": "backend", "label": "Fast roles", "sublabel": "plan, decompose, rewrite, judge", "pos": [40, 110], "size": [200, 64], "tag": "LLM_MODEL_FAST", "sources": [{ "path": "src/agentic_rag/llm/router.py", "line": 27, "label": "FAST_ROLES" }] },
+    { "id": "deep", "type": "backend", "label": "Deep roles", "sublabel": "synthesize, verify, vision", "pos": [40, 330], "size": [200, 64], "tag": "LLM_MODEL_DEEP", "sources": [{ "path": "src/agentic_rag/llm/router.py", "line": 40, "label": "tier choice" }] },
+    { "id": "router", "type": "backend", "label": "Model router", "sublabel": "one cached client per model", "pos": [300, 220], "size": [190, 64], "tag": "LLM_MODEL_<ROLE> first", "sources": [{ "path": "src/agentic_rag/llm/router.py", "line": 36, "label": "model resolution" }] },
+    { "id": "registry", "type": "backend", "label": "Provider registry", "sublabel": "@register builders", "pos": [550, 220], "size": [180, 64], "tag": "LLM_PROVIDER", "sources": [{ "path": "src/agentic_rag/llm/providers.py", "line": 147, "label": "build_client" }] },
+    { "id": "auto", "type": "backend", "label": "auto", "sublabel": "probe GET /api/tags", "pos": [800, 60], "size": [170, 64], "tag": "1.5 s timeout", "sources": [{ "path": "src/agentic_rag/llm/providers.py", "line": 119, "label": "auto" }] },
+    { "id": "ollama", "type": "external", "label": "Ollama", "sublabel": "local, OpenAI-style API", "pos": [1060, 60], "size": [190, 64], "sources": [{ "path": "src/agentic_rag/llm/ollama.py", "line": 125, "label": "build_ollama" }] },
+    { "id": "mock", "type": "backend", "label": "Mock", "sublabel": "deterministic, offline", "pos": [1060, 180], "size": [190, 64], "sources": [{ "path": "src/agentic_rag/llm/mock.py", "label": "MockLLM" }] },
+    { "id": "anthropic", "type": "external", "label": "Anthropic", "sublabel": "/v1/messages", "pos": [1060, 320], "size": [190, 64], "sources": [{ "path": "src/agentic_rag/llm/anthropic_client.py", "label": "AnthropicClient" }] },
+    { "id": "openai", "type": "external", "label": "OpenAI-format", "sublabel": "openai, azure, deepseek, compatible", "pos": [1060, 440], "size": [230, 64], "sources": [{ "path": "src/agentic_rag/llm/openai_compat.py", "label": "OpenAICompatClient" }] }
+  ],
+  "connections": [
+    { "id": "fast-router", "from": "fast", "to": "router", "label": "client_for(role)" },
+    { "id": "deep-router", "from": "deep", "to": "router", "label": "client_for(role)" },
+    { "id": "router-registry", "from": "router", "to": "registry", "label": "model name", "variant": "emphasis" },
+    { "id": "registry-auto", "from": "registry", "to": "auto", "label": "auto (default)", "variant": "emphasis" },
+    { "id": "auto-ollama", "from": "auto", "to": "ollama", "label": "answers" },
+    { "id": "auto-mock", "from": "auto", "to": "mock", "label": "no answer", "variant": "dashed" },
+    { "id": "registry-anthropic", "from": "registry", "to": "anthropic", "label": "anthropic", "labelSegment": 2 },
+    { "id": "registry-openai", "from": "registry", "to": "openai", "label": "openai-style", "labelSegment": 2 }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Per role", "items": ["A role pin beats the tier, the tier beats LLM_MODEL", "Clients are cached per model name"] },
+    { "dot": "amber", "title": "Providers", "items": ["LLM_PROVIDER=ollama or mock picks that client directly", "Four names share one OpenAI-format client"] },
+    { "dot": "rose", "title": "Offline default", "items": ["auto falls back to the mock when Ollama does not answer", "Tests and CI rely on this fallback"] }
+  ]
+}

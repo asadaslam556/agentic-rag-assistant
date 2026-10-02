@@ -1,0 +1,256 @@
+{
+    "schema_version":  2,
+    "diagram_type":  "workflow",
+    "meta":  {
+                 "title":  "The agent loop for one sub-question",
+                 "quality_profile":  "showcase",
+                 "views":  [
+                               {
+                                   "id":  "step",
+                                   "label":  "One step",
+                                   "focus":  [
+                                                 "start",
+                                                 "budget",
+                                                 "plan",
+                                                 "route",
+                                                 "tool",
+                                                 "observe"
+                                             ],
+                                   "note":  "Take a step, plan one JSON action, run one tool, feed the observation back."
+                               },
+                               {
+                                   "id":  "guards",
+                                   "label":  "Guards",
+                                   "focus":  [
+                                                 "budget",
+                                                 "plan",
+                                                 "route",
+                                                 "exhausted",
+                                                 "badjson",
+                                                 "guard"
+                                             ],
+                                   "note":  "What happens when the budget runs out, the reply is not JSON, or the call is invalid."
+                               },
+                               {
+                                   "id":  "exit",
+                                   "label":  "Exit",
+                                   "focus":  [
+                                                 "route",
+                                                 "finish"
+                                             ],
+                                   "note":  "The loop returns its evidence and steps to the branch."
+                               }
+                           ]
+             },
+    "lanes":  [
+                  {
+                      "id":  "loop",
+                      "label":  "Agent loop (Orchestrator.collect)"
+                  },
+                  {
+                      "id":  "exits",
+                      "label":  "Guards and exit",
+                      "variant":  "exception"
+                  }
+              ],
+    "mainPath":  [
+                     "start",
+                     "budget",
+                     "plan",
+                     "route",
+                     "tool",
+                     "observe"
+                 ],
+    "nodes":  [
+                  {
+                      "id":  "start",
+                      "lane":  "loop",
+                      "col":  0,
+                      "type":  "external",
+                      "label":  "Sub-question",
+                      "sublabel":  "from the branch",
+                      "width":  132
+                  },
+                  {
+                      "id":  "budget",
+                      "lane":  "loop",
+                      "col":  1,
+                      "type":  "security",
+                      "label":  "Take a step",
+                      "sublabel":  "shared budget",
+                      "width":  132
+                  },
+                  {
+                      "id":  "plan",
+                      "lane":  "loop",
+                      "col":  2,
+                      "type":  "cloud",
+                      "label":  "Plan",
+                      "sublabel":  "one JSON action",
+                      "width":  132
+                  },
+                  {
+                      "id":  "route",
+                      "lane":  "loop",
+                      "col":  3,
+                      "type":  "backend",
+                      "label":  "Route action",
+                      "sublabel":  "tool or finish",
+                      "width":  132
+                  },
+                  {
+                      "id":  "tool",
+                      "lane":  "loop",
+                      "col":  4,
+                      "type":  "backend",
+                      "label":  "Run tool",
+                      "sublabel":  "safe_run",
+                      "width":  132
+                  },
+                  {
+                      "id":  "observe",
+                      "lane":  "loop",
+                      "col":  5,
+                      "type":  "backend",
+                      "label":  "Observation",
+                      "sublabel":  "injection filtered",
+                      "width":  132
+                  },
+                  {
+                      "id":  "exhausted",
+                      "lane":  "exits",
+                      "col":  1,
+                      "type":  "security",
+                      "label":  "Budget used up",
+                      "sublabel":  "stops the loop",
+                      "width":  132
+                  },
+                  {
+                      "id":  "badjson",
+                      "lane":  "exits",
+                      "col":  2,
+                      "type":  "security",
+                      "label":  "Not valid JSON",
+                      "sublabel":  "retry note, max 3",
+                      "width":  132
+                  },
+                  {
+                      "id":  "guard",
+                      "lane":  "exits",
+                      "col":  3,
+                      "type":  "security",
+                      "label":  "Invalid call",
+                      "sublabel":  "unknown or repeated",
+                      "width":  132
+                  },
+                  {
+                      "id":  "finish",
+                      "lane":  "exits",
+                      "col":  4,
+                      "type":  "backend",
+                      "label":  "Finish",
+                      "sublabel":  "evidence + steps",
+                      "width":  132
+                  }
+              ],
+    "edges":  [
+                  {
+                      "id":  "start-budget",
+                      "from":  "start",
+                      "to":  "budget",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "budget-plan",
+                      "from":  "budget",
+                      "to":  "plan",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "plan-route",
+                      "from":  "plan",
+                      "to":  "route",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "route-tool",
+                      "from":  "route",
+                      "to":  "tool",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "tool-observe",
+                      "from":  "tool",
+                      "to":  "observe",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "observe-next",
+                      "from":  "observe",
+                      "to":  "budget",
+                      "label":  "next step",
+                      "variant":  "dashed",
+                      "role":  "return",
+                      "fromSide":  "top",
+                      "toSide":  "top"
+                  },
+                  {
+                      "id":  "budget-exhausted",
+                      "from":  "budget",
+                      "to":  "exhausted",
+                      "label":  "none left",
+                      "variant":  "security",
+                      "role":  "error"
+                  },
+                  {
+                      "id":  "plan-badjson",
+                      "from":  "plan",
+                      "to":  "badjson",
+                      "label":  "unparsed",
+                      "variant":  "security",
+                      "role":  "error",
+                      "fromSide":  "bottom",
+                      "toSide":  "top"
+                  },
+                  {
+                      "id":  "route-guard",
+                      "from":  "route",
+                      "to":  "guard",
+                      "label":  "invalid",
+                      "variant":  "security",
+                      "role":  "error",
+                      "fromSide":  "bottom",
+                      "toSide":  "top"
+                  },
+                  {
+                      "id":  "route-finish",
+                      "from":  "route",
+                      "to":  "finish",
+                      "label":  "finish",
+                      "role":  "branch"
+                  }
+              ],
+    "cards":  [
+                  {
+                      "dot":  "emerald",
+                      "title":  "One step",
+                      "items":  [
+                                    "At most MAX_AGENT_STEPS per branch",
+                                    "Each step spends one unit of the shared budget"
+                                ]
+                  },
+                  {
+                      "dot":  "rose",
+                      "title":  "Guards",
+                      "items":  [
+                                    "Bad JSON gets a retry note; three in a row end the loop",
+                                    "Unknown tools and repeated calls get a corrective note"
+                                ]
+                  }
+              ]
+}

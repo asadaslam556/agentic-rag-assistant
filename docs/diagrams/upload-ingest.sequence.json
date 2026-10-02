@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Adding documents: POST /api/upload",
+    "viewBox": [1080, 600],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "legend": { "entries": { "emphasis": { "label": "request path" }, "default": { "label": "call" }, "return": { "label": "response" }, "security": { "label": "validation" }, "dashed": { "label": "best effort" } } },
+    "views": [
+      { "id": "upload", "label": "Upload checks", "focus": ["console", "api", "uploads"], "note": "Each file is checked and written before anything is indexed." },
+      { "id": "index", "label": "Indexing", "focus": ["api", "pipeline", "index", "graph"], "note": "Saved files go through the same ingest as rag ingest." }
+    ]
+  },
+  "participants": [
+    { "id": "console", "type": "frontend", "label": "Console", "sublabel": "paperclip upload" },
+    { "id": "api", "type": "backend", "label": "FastAPI", "sublabel": "/api/upload" },
+    { "id": "uploads", "type": "database", "label": "storage/uploads", "sublabel": "saved files" },
+    { "id": "pipeline", "type": "backend", "label": "Pipeline", "sublabel": "ingest(path)" },
+    { "id": "index", "type": "database", "label": "Vector index", "sublabel": "storage/index" },
+    { "id": "graph", "type": "database", "label": "Knowledge graph", "sublabel": "graph.sqlite3" }
+  ],
+  "segments": [
+    { "from": 150, "to": 230, "label": "Upload" },
+    { "from": 240, "to": 380, "label": "Index" },
+    { "from": 390, "to": 470, "label": "Refresh" }
+  ],
+  "messages": [
+    { "id": "post", "from": "console", "to": "api", "y": 160, "label": "POST files (multipart)", "variant": "emphasis" },
+    { "id": "write", "from": "api", "to": "uploads", "y": 190, "label": "type, name, size checks", "variant": "security" },
+    { "id": "status", "from": "uploads", "to": "api", "y": 220, "label": "saved or rejected", "variant": "return" },
+    { "id": "ingest", "from": "api", "to": "pipeline", "y": 250, "label": "ingest each saved file", "variant": "emphasis" },
+    { "id": "chunks", "from": "pipeline", "to": "index", "y": 280, "label": "chunks + vectors", "variant": "default" },
+    { "id": "entities", "from": "pipeline", "to": "graph", "y": 310, "label": "entities + edges", "variant": "dashed" },
+    { "id": "stats", "from": "pipeline", "to": "api", "y": 340, "label": "chunks_added", "variant": "return" },
+    { "id": "result", "from": "api", "to": "console", "y": 370, "label": "results + chunks_indexed", "variant": "return" },
+    { "id": "health", "from": "console", "to": "api", "y": 410, "label": "GET /api/health", "variant": "default" },
+    { "id": "health-reply", "from": "api", "to": "console", "y": 440, "label": "new chunk count", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 160, "to": 376, "type": "backend" },
+    { "participant": "uploads", "from": 185, "to": 226, "type": "database" },
+    { "participant": "pipeline", "from": 250, "to": 346, "type": "backend" },
+    { "participant": "index", "from": 275, "to": 286, "type": "database" },
+    { "participant": "graph", "from": 305, "to": 316, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Checks", "items": ["Only .pdf .md .markdown .txt .html .htm", "Names sanitised, path kept inside uploads", "Files over UPLOAD_MAX_MB are deleted"] },
+    { "dot": "emerald", "title": "Indexing", "items": ["Same path as rag ingest", "Graph extraction never fails an upload"] }
+  ]
+}

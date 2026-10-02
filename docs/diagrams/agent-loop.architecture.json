@@ -1,0 +1,348 @@
+{
+    "schema_version":  1,
+    "diagram_type":  "architecture",
+    "meta":  {
+                 "title":  "The agent loop for one sub-question",
+                 "quality_profile":  "showcase",
+                 "repository":  {
+                                    "url":  "https://github.com/asadaslam556/agentic-rag-assistant",
+                                    "provider":  "github",
+                                    "link_mode":  "web",
+                                    "revision":  "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3"
+                                },
+                 "views":  [
+                               {
+                                   "id":  "step",
+                                   "label":  "One step",
+                                   "focus":  [
+                                                 "start",
+                                                 "budget",
+                                                 "plan",
+                                                 "route",
+                                                 "tool",
+                                                 "observe"
+                                             ],
+                                   "note":  "Take a step, plan one JSON action, run one tool, feed the observation back."
+                               },
+                               {
+                                   "id":  "guards",
+                                   "label":  "Guards",
+                                   "focus":  [
+                                                 "plan",
+                                                 "route",
+                                                 "badjson",
+                                                 "invalid"
+                                             ],
+                                   "note":  "Bad JSON and invalid calls get a note and the loop continues."
+                               },
+                               {
+                                   "id":  "exit",
+                                   "label":  "Exit",
+                                   "focus":  [
+                                                 "budget",
+                                                 "route",
+                                                 "finish"
+                                             ],
+                                   "note":  "The loop ends on finish or when the shared budget is used up."
+                               }
+                           ],
+                 "viewBox":  [
+                                 1220,
+                                 520
+                             ]
+             },
+    "components":  [
+                       {
+                           "id":  "start",
+                           "type":  "external",
+                           "label":  "Sub-question",
+                           "sublabel":  "from the branch",
+                           "pos":  [
+                                       30,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ]
+                       },
+                       {
+                           "id":  "budget",
+                           "type":  "security",
+                           "label":  "Take a step",
+                           "sublabel":  "shared budget",
+                           "pos":  [
+                                       230,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  64,
+                                               "label":  "budget.take()"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "plan",
+                           "type":  "cloud",
+                           "label":  "Plan",
+                           "sublabel":  "one JSON action",
+                           "pos":  [
+                                       430,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  77,
+                                               "label":  "plan call"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "route",
+                           "type":  "backend",
+                           "label":  "Route action",
+                           "sublabel":  "tool or finish",
+                           "pos":  [
+                                       630,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  98,
+                                               "label":  "finish check"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "tool",
+                           "type":  "backend",
+                           "label":  "Run tool",
+                           "sublabel":  "safe_run",
+                           "pos":  [
+                                       830,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  128,
+                                               "label":  "safe_run"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "observe",
+                           "type":  "backend",
+                           "label":  "Observation",
+                           "sublabel":  "injection filtered",
+                           "pos":  [
+                                       1030,
+                                       130
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  135,
+                                               "label":  "strip_injections"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "badjson",
+                           "type":  "security",
+                           "label":  "Not valid JSON",
+                           "sublabel":  "retry note, max 3",
+                           "pos":  [
+                                       430,
+                                       320
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  86,
+                                               "label":  "3 failures"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "invalid",
+                           "type":  "security",
+                           "label":  "Invalid call",
+                           "sublabel":  "unknown or repeated",
+                           "pos":  [
+                                       630,
+                                       320
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ],
+                           "sources":  [
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  115,
+                                               "label":  "unknown tool"
+                                           },
+                                           {
+                                               "path":  "src/agentic_rag/agent/orchestrator.py",
+                                               "line":  122,
+                                               "label":  "repeated call"
+                                           }
+                                       ]
+                       },
+                       {
+                           "id":  "finish",
+                           "type":  "backend",
+                           "label":  "Finish",
+                           "sublabel":  "evidence + steps",
+                           "pos":  [
+                                       830,
+                                       320
+                                   ],
+                           "size":  [
+                                        150,
+                                        64
+                                    ]
+                       }
+                   ],
+    "connections":  [
+                        {
+                            "id":  "start-budget",
+                            "from":  "start",
+                            "to":  "budget",
+                            "variant":  "emphasis"
+                        },
+                        {
+                            "id":  "budget-plan",
+                            "from":  "budget",
+                            "to":  "plan",
+                            "variant":  "emphasis"
+                        },
+                        {
+                            "id":  "plan-route",
+                            "from":  "plan",
+                            "to":  "route",
+                            "variant":  "emphasis"
+                        },
+                        {
+                            "id":  "route-tool",
+                            "from":  "route",
+                            "to":  "tool",
+                            "variant":  "emphasis"
+                        },
+                        {
+                            "id":  "tool-observe",
+                            "from":  "tool",
+                            "to":  "observe",
+                            "variant":  "emphasis"
+                        },
+                        {
+                            "id":  "observe-next",
+                            "from":  "observe",
+                            "to":  "budget",
+                            "label":  "next step",
+                            "variant":  "dashed",
+                            "fromSide":  "top",
+                            "toSide":  "top"
+                        },
+                        {
+                            "id":  "plan-badjson",
+                            "from":  "plan",
+                            "to":  "badjson",
+                            "label":  "unparsed",
+                            "variant":  "security",
+                            "fromSide":  "bottom",
+                            "toSide":  "top",
+                            "labelAt":  [
+                                            505,
+                                            257
+                                        ]
+                        },
+                        {
+                            "id":  "route-invalid",
+                            "from":  "route",
+                            "to":  "invalid",
+                            "label":  "invalid",
+                            "variant":  "security",
+                            "fromSide":  "bottom",
+                            "toSide":  "top",
+                            "labelAt":  [
+                                            705,
+                                            257
+                                        ]
+                        },
+                        {
+                            "id":  "route-finish",
+                            "from":  "route",
+                            "to":  "finish",
+                            "label":  "finish",
+                            "fromSide":  "right",
+                            "toSide":  "top"
+                        },
+                        {
+                            "id":  "budget-finish",
+                            "from":  "budget",
+                            "to":  "finish",
+                            "label":  "budget used up",
+                            "variant":  "security",
+                            "fromSide":  "bottom",
+                            "toSide":  "bottom",
+                            "via":  [
+                                        [
+                                            305,
+                                            420
+                                        ],
+                                        [
+                                            905,
+                                            420
+                                        ]
+                                    ]
+                        }
+                    ],
+    "cards":  [
+                  {
+                      "dot":  "emerald",
+                      "title":  "One step",
+                      "items":  [
+                                    "At most MAX_AGENT_STEPS per branch",
+                                    "Each step spends one unit of the shared budget"
+                                ]
+                  },
+                  {
+                      "dot":  "rose",
+                      "title":  "Guards",
+                      "items":  [
+                                    "Bad JSON gets a retry note; three in a row end the loop",
+                                    "Unknown tools and repeated calls get a corrective note"
+                                ]
+                  }
+              ]
+}

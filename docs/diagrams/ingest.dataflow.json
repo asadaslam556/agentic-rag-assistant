@@ -1,0 +1,311 @@
+{
+    "schema_version":  1,
+    "diagram_type":  "dataflow",
+    "meta":  {
+                 "title":  "Ingest: from files to the three stores",
+                 "viewBox":  [
+                                 1080,
+                                 560
+                             ],
+                 "quality_profile":  "showcase",
+                 "legend":  {
+                                "entries":  {
+                                                "emphasis":  {
+                                                                 "label":  "main path"
+                                                             },
+                                                "default":  {
+                                                                "label":  "data"
+                                                            },
+                                                "dashed":  {
+                                                               "label":  "optional"
+                                                           }
+                                            }
+                            },
+                 "views":  [
+                               {
+                                   "id":  "text-path",
+                                   "label":  "Text path",
+                                   "focus":  [
+                                                 "files",
+                                                 "loaders",
+                                                 "chunker",
+                                                 "embedder",
+                                                 "vectors"
+                                             ],
+                                   "note":  "Every document becomes chunks and vectors in storage/index."
+                               },
+                               {
+                                   "id":  "pages",
+                                   "label":  "PDF pages",
+                                   "focus":  [
+                                                 "renderer",
+                                                 "vision",
+                                                 "colpali",
+                                                 "pages"
+                                             ],
+                                   "note":  "PDF pages can be described by a vision model and embedded as images."
+                               },
+                               {
+                                   "id":  "graph",
+                                   "label":  "Knowledge graph",
+                                   "focus":  [
+                                                 "chunker",
+                                                 "extractor",
+                                                 "kg"
+                                             ],
+                                   "note":  "The same chunks feed entity and relation extraction."
+                               }
+                           ]
+             },
+    "stages":  [
+                   {
+                       "label":  "Sources"
+                   },
+                   {
+                       "label":  "Load"
+                   },
+                   {
+                       "label":  "Split and read"
+                   },
+                   {
+                       "label":  "Embed and extract"
+                   },
+                   {
+                       "label":  "Store (STORAGE_DIR)"
+                   }
+               ],
+    "nodes":  [
+                  {
+                      "id":  "files",
+                      "type":  "external",
+                      "label":  "Files",
+                      "sublabel":  "txt md html pdf",
+                      "stage":  0,
+                      "row":  0,
+                      "tag":  "rag ingest, upload",
+                      "height":  64
+                  },
+                  {
+                      "id":  "loaders",
+                      "type":  "backend",
+                      "label":  "Loaders",
+                      "sublabel":  "one text per document",
+                      "stage":  1,
+                      "row":  0,
+                      "height":  64
+                  },
+                  {
+                      "id":  "renderer",
+                      "type":  "backend",
+                      "label":  "Page renderer",
+                      "sublabel":  "PDF only, pypdfium2",
+                      "stage":  1,
+                      "row":  2,
+                      "height":  64
+                  },
+                  {
+                      "id":  "chunker",
+                      "type":  "backend",
+                      "label":  "Chunker",
+                      "sublabel":  "structure or length",
+                      "stage":  2,
+                      "row":  0,
+                      "tag":  "CHUNK_STRATEGY",
+                      "height":  64
+                  },
+                  {
+                      "id":  "vision",
+                      "type":  "cloud",
+                      "label":  "Page reader",
+                      "sublabel":  "vision model",
+                      "stage":  2,
+                      "row":  1,
+                      "tag":  "PDF_VISION",
+                      "height":  64
+                  },
+                  {
+                      "id":  "colpali",
+                      "type":  "backend",
+                      "label":  "ColPali encoder",
+                      "sublabel":  "page image vectors",
+                      "stage":  2,
+                      "row":  2,
+                      "tag":  "VISUAL_RETRIEVER",
+                      "height":  64
+                  },
+                  {
+                      "id":  "embedder",
+                      "type":  "backend",
+                      "label":  "Embedder",
+                      "sublabel":  "local, sbert, e5, openai",
+                      "stage":  3,
+                      "row":  0,
+                      "tag":  "EMBEDDINGS_PROVIDER",
+                      "height":  64
+                  },
+                  {
+                      "id":  "extractor",
+                      "type":  "backend",
+                      "label":  "Graph extractor",
+                      "sublabel":  "offline or llm",
+                      "stage":  3,
+                      "row":  1,
+                      "tag":  "GRAPH_EXTRACTOR",
+                      "height":  64
+                  },
+                  {
+                      "id":  "vectors",
+                      "type":  "database",
+                      "label":  "Vector index",
+                      "sublabel":  "index/vectors.npy",
+                      "stage":  4,
+                      "row":  0,
+                      "height":  64
+                  },
+                  {
+                      "id":  "kg",
+                      "type":  "database",
+                      "label":  "Knowledge graph",
+                      "sublabel":  "index/graph.sqlite3",
+                      "stage":  4,
+                      "row":  1,
+                      "height":  64
+                  },
+                  {
+                      "id":  "pages",
+                      "type":  "database",
+                      "label":  "Page index",
+                      "sublabel":  "pages/ images + records",
+                      "stage":  4,
+                      "row":  2,
+                      "height":  64
+                  }
+              ],
+    "flows":  [
+                  {
+                      "id":  "files-loaders",
+                      "from":  "files",
+                      "to":  "loaders",
+                      "label":  "documents",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "loaders-chunker",
+                      "from":  "loaders",
+                      "to":  "chunker",
+                      "label":  "text",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "chunker-embedder",
+                      "from":  "chunker",
+                      "to":  "embedder",
+                      "label":  "chunks",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "embedder-vectors",
+                      "from":  "embedder",
+                      "to":  "vectors",
+                      "label":  "vectors",
+                      "variant":  "emphasis",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "files-renderer",
+                      "from":  "files",
+                      "to":  "renderer",
+                      "label":  "PDF pages",
+                      "variant":  "dashed"
+                  },
+                  {
+                      "id":  "renderer-vision",
+                      "from":  "renderer",
+                      "to":  "vision",
+                      "label":  "page images",
+                      "variant":  "dashed",
+                      "labelSegment":  0,
+                      "fromSide":  "top",
+                      "toSide":  "left",
+                      "via":  [
+                                  [
+                                      315,
+                                      274
+                                  ]
+                              ]
+                  },
+                  {
+                      "id":  "vision-chunker",
+                      "from":  "vision",
+                      "to":  "chunker",
+                      "label":  "page descriptions",
+                      "variant":  "dashed"
+                  },
+                  {
+                      "id":  "renderer-colpali",
+                      "from":  "renderer",
+                      "to":  "colpali",
+                      "label":  "page images",
+                      "variant":  "dashed",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "colpali-pages",
+                      "from":  "colpali",
+                      "to":  "pages",
+                      "label":  "page vectors",
+                      "variant":  "dashed",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "chunker-extractor",
+                      "from":  "chunker",
+                      "to":  "extractor",
+                      "label":  "same chunks"
+                  },
+                  {
+                      "id":  "extractor-kg",
+                      "from":  "extractor",
+                      "to":  "kg",
+                      "label":  "entities + edges",
+                      "route":  "straight"
+                  },
+                  {
+                      "id":  "renderer-pages",
+                      "from":  "renderer",
+                      "to":  "pages",
+                      "label":  "PNG + records",
+                      "variant":  "dashed",
+                      "route":  "bottom-channel"
+                  }
+              ],
+    "cards":  [
+                  {
+                      "dot":  "emerald",
+                      "title":  "Always",
+                      "items":  [
+                                    "Load, chunk, embed, write storage/index",
+                                    "A file already indexed is skipped"
+                                ]
+                  },
+                  {
+                      "dot":  "amber",
+                      "title":  "PDFs only",
+                      "items":  [
+                                    "Page descriptions join the chunks",
+                                    "ColPali runs only with VISUAL_RETRIEVER=colpali"
+                                ]
+                  },
+                  {
+                      "dot":  "violet",
+                      "title":  "Graph",
+                      "items":  [
+                                    "Runs when GRAPH_EXTRACTION is on",
+                                    "A failure is reported, never fatal"
+                                ]
+                  }
+              ]
+}
