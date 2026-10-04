@@ -1,5 +1,12 @@
 # Configuration
 
+[![Ollama](https://img.shields.io/badge/Ollama-default-000000?logo=ollama&logoColor=white)](https://ollama.com)
+[![Claude](https://img.shields.io/badge/Claude-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?logo=openai&logoColor=white)](https://platform.openai.com)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-4D6BFE?logo=deepseek&logoColor=white)](https://www.deepseek.com)
+[![sentence-transformers](https://img.shields.io/badge/sentence--transformers-optional-FFD21E?logo=huggingface&logoColor=black)](https://www.sbert.net)
+[![Neo4j](https://img.shields.io/badge/Neo4j-optional-4581C3?logo=neo4j&logoColor=white)](#knowledge-graph)
+
 Every setting is an environment variable, read once by `Settings.from_env()` in
 `src/agentic_rag/config.py`. Copy `.env.example` to `.env` (it is gitignored) or export the variables
 in your shell. A blank or unset variable keeps the default shown here.
@@ -11,7 +18,7 @@ Ollama if one answers and the offline mock otherwise.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `LLM_PROVIDER` | `auto` | `auto`, `ollama`, `anthropic`, `openai`, `azure`, `deepseek`, `openai_compatible`, `mock`. See [Models](models.md) |
+| `LLM_PROVIDER` | `auto` | `auto`, `ollama`, `anthropic`, `openai`, `azure`, `deepseek`, `openai_compatible`, `mock`. See [Models](architecture.md#models-and-providers) |
 | `LLM_MODEL` | blank | One model name for whichever provider is active; wins over the provider settings below |
 | `LLM_MODEL_FAST`, `LLM_MODEL_DEEP` | blank | Two-tier routing by role |
 | `LLM_MODEL_<ROLE>` | blank | Pins one role: `PLAN`, `DECOMPOSE`, `REWRITE`, `SYNTHESIZE`, `VERIFY`, `JUDGE`, `VISION` |
@@ -89,7 +96,7 @@ Ollama if one answers and the offline mock otherwise.
 | Variable | Default | Notes |
 |---|---|---|
 | `GRAPH_EXTRACTION` | `true` | Extract entities and edges at ingest |
-| `GRAPH_EXTRACTOR` | `auto` | `auto`, `offline`, `llm`. See [Knowledge graph](knowledge-graph.md#extraction) |
+| `GRAPH_EXTRACTOR` | `auto` | `auto`, `offline`, `llm`. See [Knowledge graph](architecture.md#extraction) |
 | `GRAPH_STORE` | `sqlite` | `sqlite` or `neo4j` (needs the `[neo4j]` extra) |
 | `GRAPH_MAX_ENTITIES_PER_CHUNK` | `12` | |
 | `GRAPH_EXTRACT_MAX_TOKENS` | `3000` | Reply budget for `llm` extraction |

@@ -1,4 +1,4 @@
-<img src="docs/logo.png" alt="Agentic RAG logo: a robot reading documents next to a RAG speech bubble" width="120" align="right">
+<img src="docs/images/logo.png" alt="Agentic RAG logo: a robot reading documents next to a RAG speech bubble" width="120" align="right">
 
 # Agentic RAG Knowledge Assistant
 
@@ -42,7 +42,7 @@
 [![Offline](https://img.shields.io/badge/runs%20offline-no%20keys%20needed-success)](#quick-start)
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Demo: a question split into two parts, a follow-up, a multi-hop question answered through the knowledge graph, a calculation, a German question, and an honest refusal when the sources have no answer">
+  <img src="docs/images/demo.gif" alt="Demo: a question split into two parts, a follow-up, a multi-hop question answered through the knowledge graph, a calculation, a German question, and an honest refusal when the sources have no answer">
 </p>
 
 <p align="center"><sub>Real run on Claude over the bundled sample documents: parallel sub-questions, follow-ups, knowledge graph traversal, the calculator, a German question, and an honest "not in the sources" at the end.</sub></p>
@@ -52,8 +52,8 @@ A retrieval-augmented assistant that does not just search and summarise. You cha
 It runs on a free local model by default, on Claude, OpenAI, or DeepSeek with one environment variable, and with no model at all for development, because a deterministic offline mock keeps the whole pipeline, the test suite, and CI working with zero keys and zero network.
 
 <p align="center"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard.png">
-  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/dashboard-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard.png">
+  <img alt="The web console running on Claude: a question split into two parts, cited and verified answers, and the agent's reasoning steps" src="docs/images/dashboard-light.png">
 </picture></p>
 
 <p align="center"><sub>One answer up close: the question split into two parts, every claim cited and verified, and the agent's reasoning steps. Follows your GitHub theme.</sub></p>
@@ -78,19 +78,18 @@ cd frontend && npm install && npm run build && cd ..
 rag serve        # http://localhost:8000
 ```
 
-Or run everything in Docker with `docker compose up --build`. The [setup guide](docs/setup-guide.md) walks through it step by step, and [`docs/commands.md`](docs/commands.md) is the Windows-first command reference, including cache clearing and a full reset.
+Or run everything in Docker with `docker compose up --build`. The [setup guide](docs/setup-guide.md) walks through it step by step, with Windows PowerShell commands first and macOS and Linux variants alongside.
 
 ## Documentation
 
-| Start here | Then |
+| Guide | What it covers |
 |---|---|
-| [Setup guide](docs/setup-guide.md), step by step | [Architecture](docs/architecture.md), the map |
-| [Command reference](docs/commands.md), Windows first | [Agent and orchestrator](docs/agent.md) |
-| [Configuration](docs/configuration.md), every setting | [Answer turn and streaming](docs/streaming.md) |
-| [API reference](docs/api.md) | [Ingestion](docs/ingestion.md) and [retrieval](docs/retrieval.md) |
-| [Deployment and phones](docs/deployment.md) | [Text-to-SQL](docs/text-to-sql.md), [knowledge graph](docs/knowledge-graph.md), [models](docs/models.md) |
-
-[`docs/README.md`](docs/README.md) indexes every page and diagram.
+| [Setup guide](docs/setup-guide.md) | From zero to a running, verified assistant, step by step |
+| [Architecture](docs/architecture.md) | Every flow with its diagram: the agent loop, orchestration, streaming, ingestion, retrieval, text-to-SQL, the knowledge graph, and models |
+| [Configuration](docs/configuration.md) | Every environment variable with its default |
+| [API reference](docs/api.md) | Endpoints, payloads, auth, and server-sent events |
+| [Deployment](docs/deployment.md) | Docker, Render, Cloud Run, tunnels, and opening it on a phone |
+| [Security](SECURITY.md), [Contributing](CONTRIBUTING.md) | Trust boundaries, reporting, the pull request checklist, CI |
 
 ## Contents
 
@@ -143,13 +142,11 @@ Not every relational question needs this. "Which safety standard does the Atlas 
 ### The whole system on one page
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/system-overview.architecture.dark.png">
-  <img alt="System overview: the React console and the rag CLI reach the pipeline through FastAPI; the pipeline runs the orchestrator and agent loop, which call the tools over the vector index, knowledge graph, structured data, and the web; synthesis and the verifier call models through the router" src="docs/diagrams/system-overview.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/system-overview-dark.png">
+  <img alt="System overview: the React console and the rag CLI reach the pipeline through FastAPI; the pipeline runs the orchestrator and agent loop, which call the tools over the vector index, knowledge graph, structured data, and the web; synthesis and the verifier call models through the router" src="docs/images/system-overview.png">
 </picture>
 
-<sub>Interactive version: [`docs/diagrams/system-overview.architecture.html`](docs/diagrams/system-overview.architecture.html) (open it locally in a browser).</sub>
-
-Every model call goes through the router, so each role can use a different model, and the offline mock stands in for all of them in tests and CI. In the interactive version each component links to the source file it was drawn from.
+Every model call goes through the router, so each role can use a different model, and the offline mock stands in for all of them in tests and CI.
 
 ### Two nested levels
 
@@ -158,26 +155,22 @@ Both plain Python, no agent framework.
 The **orchestrator** works out how many independent sub-questions a request really contains, runs a worker for each at the same time, merges what they found, and hands the result to synthesis and verification.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/orchestration.architecture.dark.png">
-  <img alt="Orchestration: decompose into up to MAX_BRANCHES sub-questions, run an agent loop per branch, retry empty branches once while budget lasts, then merge and hand the evidence to context assembly" src="docs/diagrams/orchestration.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/orchestration-dark.png">
+  <img alt="Orchestration: decompose into up to MAX_BRANCHES sub-questions, run an agent loop per branch, retry empty branches once while budget lasts, then merge and hand the evidence to context assembly" src="docs/images/orchestration.png">
 </picture>
-
-<sub>Interactive version: [`docs/diagrams/orchestration.architecture.html`](docs/diagrams/orchestration.architecture.html) (open it locally in a browser).</sub>
 
 Each **worker** is the plan-and-act loop, scoped to one sub-question. Tool edges always return to the planner, which is what lets a branch notice that the corpus answered half the question and the web is needed for the rest, or see an error and route around it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/agent-loop.architecture.dark.png">
-  <img alt="Agent loop: take a step from the shared budget, plan one JSON action, route to a tool or finish, run the tool, filter the observation, repeat" src="docs/diagrams/agent-loop.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/agent-loop-dark.png">
+  <img alt="Agent loop: take a step from the shared budget, plan one JSON action, route to a tool or finish, run the tool, filter the observation, repeat" src="docs/images/agent-loop.png">
 </picture>
-
-<sub>Interactive version: [`docs/diagrams/agent-loop.architecture.html`](docs/diagrams/agent-loop.architecture.html) (open it locally in a browser).</sub>
 
 "What does the Scale plan cost **and** how long does deployment take" becomes two branches running concurrently. "What does the Scale plan cost?" stays a single branch and behaves exactly like the original loop, same events in the same order. The extra machinery only appears when the question genuinely has independent parts.
 
 Two things fall out of splitting the levels. Independent parts get researched at the same time instead of one after another, which is what you feel with a slow local model. And the verifier grades the merged result, rather than the same planner that did the work marking its own homework.
 
-[The agent and the orchestrator](docs/agent.md) covers the state design, the shared step budget, the concurrency work, and the decomposer in full.
+[The agent and the orchestrator](docs/architecture.md#the-agent-and-the-orchestrator) covers the state design, the shared step budget, the concurrency work, and the decomposer in full.
 
 ## The layers
 
@@ -202,11 +195,9 @@ Everything flows through `pipeline.py`, which is the best file to read first.
 ### How a question travels
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/chat-stream.sequence.dark.png">
-  <img alt="Sequence: the console posts to /api/chat/stream, the pipeline runs on a worker thread and stage, step, token, and answer events flow back over server-sent events" src="docs/diagrams/chat-stream.sequence.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/chat-stream-dark.png">
+  <img alt="Sequence: the console posts to /api/chat/stream, the pipeline runs on a worker thread and stage, step, token, and answer events flow back over server-sent events" src="docs/images/chat-stream.png">
 </picture>
-
-<sub>Interactive version: [`docs/diagrams/chat-stream.sequence.html`](docs/diagrams/chat-stream.sequence.html) (open it locally in a browser).</sub>
 
 1. **Remember.** In a conversation, "and what does it cost?" is rewritten into a standalone question using recent turns.
 2. **Decompose.** The orchestrator decides how many independent sub-questions there are. Usually one.
@@ -214,7 +205,7 @@ Everything flows through `pipeline.py`, which is the best file to read first.
 4. **Merge and assemble.** Branch evidence is joined, stripped of sentences that try to instruct the model, deduplicated by text hash, fused with RRF across tools, re-scored against the question (by a cross-encoder when one is configured), and packed into a token budget. The packed order defines the citation numbers.
 5. **Synthesise.** The model writes the answer using only the numbered sources, citing as [1] or [2][3]. Tokens stream out as they are produced.
 6. **Verify.** The answer is split into claims, each checked against the sources it cites, lexically offline and with a dedicated model call when one is available.
-7. **Refine or abstain.** An answer passes when groundedness reaches `MIN_GROUNDEDNESS` (0.7) and at least half its claims cite a source. Failed claims go back to synthesis with targeted feedback; an answer that still fails is returned marked Needs review. If the sources do not contain the answer, the assistant returns an explicit insufficient-evidence response, and the verifier treats that honesty as a pass. [Answer turn and streaming](docs/streaming.md) has the stages and every event.
+7. **Refine or abstain.** An answer passes when groundedness reaches `MIN_GROUNDEDNESS` (0.7) and at least half its claims cite a source. Failed claims go back to synthesis with targeted feedback; an answer that still fails is returned marked Needs review. If the sources do not contain the answer, the assistant returns an explicit insufficient-evidence response, and the verifier treats that honesty as a pass. [Answer turn and streaming](docs/architecture.md#answer-turn-and-streaming) has the stages and every event.
 
 ## Choosing a model
 
@@ -654,7 +645,7 @@ agentic-rag-assistant/
     cli.py  api.py         # command line, REST + SSE
   frontend/                # React console, PWA manifest and icons
   data/                    # sample corpus, structured catalog, orders database script, and the demo PDF
-  docs/                    # guides, per-flow pages, API reference, diagrams/ (archify), screenshots
+  docs/                    # setup, architecture, configuration, API, deployment; images/ for diagrams and screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
   tests/                   # 288 tests, offline by design

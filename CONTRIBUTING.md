@@ -23,11 +23,9 @@ Branch from `main`, make the change with tests, run the checks below, and open a
 two jobs on every push to `main` and every pull request:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/ci.architecture.dark.png">
-  <img alt="CI: the backend job on Python 3.10 and 3.12 installs the package, runs pip-audit on 3.12, ruff and the text checks, pytest, and the offline mock eval; the frontend job on Node 22 runs npm ci, npm audit at high severity, and the console build" src="docs/diagrams/ci.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/ci-dark.png">
+  <img alt="CI: the backend job on Python 3.10 and 3.12 installs the package, runs pip-audit on 3.12, ruff and the text checks, pytest, and the offline mock eval; the frontend job on Node 22 runs npm ci, npm audit at high severity, and the console build" src="docs/images/ci.png">
 </picture>
-
-<sub>Interactive version: [`docs/diagrams/ci.architecture.html`](docs/diagrams/ci.architecture.html).</sub>
 
 ## Before opening a pull request
 

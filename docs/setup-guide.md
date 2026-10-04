@@ -5,22 +5,19 @@
 [![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white)](https://git-scm.com)
 [![Ollama](https://img.shields.io/badge/Ollama-optional-000000?logo=ollama&logoColor=white)](https://ollama.com/download)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
-[![PowerShell](https://img.shields.io/badge/Windows-PowerShell-5391FE?logo=powershell&logoColor=white)](commands.md)
+[![PowerShell](https://img.shields.io/badge/Windows-PowerShell-5391FE?logo=powershell&logoColor=white)](#2-install)
 
 From zero to a running, verified, streaming assistant. Windows PowerShell
 commands first, macOS and Linux variants where they differ. Nothing here
 needs an API key or a paid service.
 
-Windows users who just want the commands in order, with cache clearing and
-a full reset, can use [`commands.md`](commands.md) instead. To view the
+Every setting is listed in [`configuration.md`](configuration.md). To view the
 console on a phone or put it online, see [`deployment.md`](deployment.md).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/setup-path.architecture.dark.png">
-  <img alt="Setup path: install, first offline run with the mock, checks, then pick a model (Ollama locally or a hosted provider with an API key), open the console, and ingest your own documents; extras such as SQL, the reranker, and the graph are optional" src="diagrams/setup-path.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="images/setup-path-dark.png">
+  <img alt="Setup path: install, first offline run with the mock, checks, then pick a model (Ollama locally or a hosted provider with an API key), open the console, and ingest your own documents; extras such as SQL, the reranker, and the graph are optional" src="images/setup-path.png">
 </picture>
-
-<sub>Interactive version: [`diagrams/setup-path.architecture.html`](diagrams/setup-path.architecture.html).</sub>
 
 Every step after the first run is optional. The numbers match the sections below.
 
@@ -191,8 +188,8 @@ Two of the eight multilingual cases ask about the SAP Q1 2024 statement and the 
 Q3 FY2026 earnings release, which are not redistributed here. Download them from the companies'
 investor relations pages into `data/sample_pdfs/` and ingest them to reach 8/8.
 
-[Knowledge graph](knowledge-graph.md) has the schema and the routing rule, and
-[Retrieval](retrieval.md#languages) covers the language handling.
+[Knowledge graph](architecture.md#the-knowledge-graph) has the schema and the routing rule, and
+[Retrieval](architecture.md#languages) covers the language handling.
 
 ## 5d. Database questions and reranking
 
@@ -240,7 +237,7 @@ cd frontend; npm run build; cd ..
 rag serve                     # console + API together on http://localhost:8000
 ```
 
-![The console with a verified, cited answer and its reasoning steps](dashboard-light.png)
+![The console with a verified, cited answer and its reasoning steps](images/dashboard-light.png)
 
 What to try in it:
 

@@ -1,5 +1,10 @@
 # API reference
 
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-%2Fdocs-6BA539?logo=openapiinitiative&logoColor=white)](#api-reference)
+[![SSE](https://img.shields.io/badge/streaming-server%20sent%20events-FF6C37)](#post-apichatstream)
+
 `rag serve` runs the FastAPI app in `src/agentic_rag/api.py` on `127.0.0.1:8000` by default
 (`--host`, `--port` to change). Every endpoint lives under `/api`. Interactive OpenAPI docs are at
 `/docs`. When `frontend/dist` exists, the built console is served at `/`.
@@ -97,7 +102,7 @@ The response is the answer payload:
 
 Same request body. The response is `text/event-stream`: each event is `event: <name>` followed by
 `data: <json>`. The events and their order are listed in
-[Answer turn and streaming](streaming.md#the-event-stream). The stream ends with `answer` (the payload
+[Answer turn and streaming](architecture.md#the-event-stream). The stream ends with `answer` (the payload
 above) and `done`, or with `error`.
 
 ### POST /api/ask

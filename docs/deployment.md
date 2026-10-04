@@ -24,11 +24,9 @@ A tunnel or a LAN address just forwards traffic to the machine actually running 
 So if the point is pulling out your phone in a cafe and showing someone, you need a deployment. The tunnel is still worth knowing for quick checks at your desk.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/phone-access.architecture.dark.png">
-  <img alt="Phone access decision: if the computer cannot stay on, deploy the container; if it can and the phone is on the same wifi, use a LAN address; otherwise use a tunnel. A tunnel or a deployment gives HTTPS, which installing the console as an app needs" src="diagrams/phone-access.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-access-dark.png">
+  <img alt="Phone access decision: if the computer cannot stay on, deploy the container; if it can and the phone is on the same wifi, use a LAN address; otherwise use a tunnel. A tunnel or a deployment gives HTTPS, which installing the console as an app needs" src="images/phone-access.png">
 </picture>
-
-<sub>Interactive version: [`diagrams/phone-access.architecture.html`](diagrams/phone-access.architecture.html).</sub>
 
 ## What this app needs from a host
 
@@ -38,11 +36,11 @@ So if the point is pulling out your phone in a cafe and showing someone, you nee
 - **About 400 MB of memory** in a normal demo configuration.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/deployment.architecture.dark.png">
-  <img alt="Deployment: the Dockerfile builds the console in node:22-alpine, copies it into python:3.11-slim, and indexes the sample corpus at build time; the container runs rag serve as uid 10001 with a health check, serves the browser on port 8000, writes to the rag-storage volume, and reaches Ollama on the host or a hosted LLM" src="diagrams/deployment.architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="images/deployment-dark.png">
+  <img alt="Deployment: the Dockerfile builds the console in node:22-alpine, copies it into python:3.11-slim, and indexes the sample corpus at build time; the container runs rag serve as uid 10001 with a health check, serves the browser on port 8000, writes to the rag-storage volume, and reaches Ollama on the host or a hosted LLM" src="images/deployment.png">
 </picture>
 
-<sub>Interactive version: [`diagrams/deployment.architecture.html`](diagrams/deployment.architecture.html). The diagram shows
+<sub>The diagram shows
 `docker compose`; on Render or Cloud Run the platform runs the same image, the provider key comes from
 platform secrets, and storage is the container's own disk unless you attach one.</sub>
 
