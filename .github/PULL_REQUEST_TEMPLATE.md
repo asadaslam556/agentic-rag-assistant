@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] `pytest` passes
-- [ ] `ruff check src tests` is clean
+- [ ] `ruff check src tests scripts` is clean
 - [ ] `rag ingest data/sample_docs && rag eval` still scores 11/11
 - [ ] `cd frontend && npm run build` succeeds (only if the console changed)
 - [ ] Behaviour changes come with tests

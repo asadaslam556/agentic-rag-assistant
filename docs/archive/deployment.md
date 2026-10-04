@@ -23,12 +23,16 @@ A tunnel or a LAN address just forwards traffic to the machine actually running 
 
 So if the point is pulling out your phone in a cafe and showing someone, you need a deployment. The tunnel is still worth knowing for quick checks at your desk.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/phone-access.architecture.dark.png">
-  <img alt="Phone access decision: if the computer cannot stay on, deploy the container; if it can and the phone is on the same wifi, use a LAN address; otherwise use a tunnel. A tunnel or a deployment gives HTTPS, which installing the console as an app needs" src="diagrams/phone-access.architecture.png">
-</picture>
-
-<sub>Interactive version: [`diagrams/phone-access.architecture.html`](diagrams/phone-access.architecture.html).</sub>
+```mermaid
+flowchart TD
+    START(["I want to open the console on a phone"]) --> Q1{"Can my computer<br/>stay on?"}
+    Q1 -->|no| DEPLOY["Deploy the container<br/>Render or Cloud Run"]
+    Q1 -->|yes| Q2{"Is the phone on<br/>the same wifi?"}
+    Q2 -->|yes| LAN["LAN address<br/>rag serve --host 0.0.0.0"]
+    Q2 -->|no| TUNNEL["Tunnel<br/>cloudflared or ngrok"]
+    DEPLOY --> INSTALL(["Install it as an app over HTTPS"])
+    TUNNEL --> INSTALL
+```
 
 ## What this app needs from a host
 
@@ -37,38 +41,21 @@ So if the point is pulling out your phone in a cafe and showing someone, you nee
 - **A little disk**, for the index and anything uploaded.
 - **About 400 MB of memory** in a normal demo configuration.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/deployment.architecture.dark.png">
-  <img alt="Deployment: the Dockerfile builds the console in node:22-alpine, copies it into python:3.11-slim, and indexes the sample corpus at build time; the container runs rag serve as uid 10001 with a health check, serves the browser on port 8000, writes to the rag-storage volume, and reaches Ollama on the host or a hosted LLM" src="diagrams/deployment.architecture.png">
-</picture>
-
-<sub>Interactive version: [`diagrams/deployment.architecture.html`](diagrams/deployment.architecture.html). The diagram shows
-`docker compose`; on Render or Cloud Run the platform runs the same image, the provider key comes from
-platform secrets, and storage is the container's own disk unless you attach one.</sub>
-
-Anything that runs a container and keeps it alive works. Serverless function platforms fight every one of those points, which is why **Vercel is the wrong tool here**: functions time out mid-stream, each invocation starts with a cold filesystem, and uploads do not survive. You could host `frontend/dist` there and put the backend elsewhere, but then you are running two platforms for one small app.
-
-## Locally with Docker
-
-```bash
-docker compose up --build
+```mermaid
+flowchart LR
+    PHONE["Phone or laptop<br/>browser"] -->|HTTPS| HOST
+    subgraph HOST["One container on Render or Cloud Run"]
+        CONSOLE["Built console<br/>served at /"]
+        API["FastAPI<br/>/api and SSE"]
+        DISK[("storage/<br/>index, graph, uploads")]
+        CONSOLE --- API
+        API --- DISK
+    end
+    API -->|provider key from<br/>platform secrets| LLM["Hosted model<br/>Anthropic or DeepSeek"]
+    API -->|keyless| WEB["Web search<br/>DuckDuckGo"]
 ```
 
-One image with the console built in and the sample corpus indexed at build time, on port 8000:
-
-- The build has two stages: `node:22-alpine` builds the console, then `python:3.11-slim` installs the
-  package (`--build-arg EXTRAS="[multilingual]"` adds an extra) and runs `rag ingest data/sample_docs`.
-- The server runs as an unprivileged user (uid 10001) that can only write to `/app/storage`, and the
-  `HEALTHCHECK` polls `/api/health` every 30 seconds.
-- The index, graph, and uploads live in the `rag-storage` volume, so they survive rebuilds. A volume
-  created by an image older than 3.14.0 is owned by root; fix it once with
-  `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage`.
-- `OLLAMA_BASE_URL` points at `host.docker.internal:11434`, so with the default `LLM_PROVIDER=auto` the
-  container uses an Ollama running on your machine when it answers, and the offline mock otherwise.
-- `.env` is kept out of the image. To use provider keys, uncomment `env_file` in `docker-compose.yml`;
-  if your `.env` selects the multilingual embedder, also set the `EXTRAS` build argument and run
-  `rag reindex` in the container once.
-- `.dockerignore` excludes `data/sample_pdfs`, so the visual-retrieval demo PDF is not in the image.
+Anything that runs a container and keeps it alive works. Serverless function platforms fight every one of those points, which is why **Vercel is the wrong tool here**: functions time out mid-stream, each invocation starts with a cold filesystem, and uploads do not survive. You could host `frontend/dist` there and put the backend elsewhere, but then you are running two platforms for one small app.
 
 ## Free options, as of this writing
 
@@ -117,7 +104,7 @@ PDF_VISION=off
 
 `PDF_VISION=off` matters on a small instance: rendering page images costs memory and one model call per page, which is not what you want a public demo doing on someone else's tap.
 
-If you want the demo private, `API_AUTH_TOKEN` protects the API, but the console currently sends no `Authorization` header, so with a token set the console's own requests fail. The simplest honest setup for a public link is no token, the bundled sample corpus, and a spending limit on the provider account; for a private one, put an authenticating proxy in front of the service.
+If you want the demo private, set `API_AUTH_TOKEN` too, and note the browser console will then need that token, so the simplest honest setup for a public link is no token, the bundled sample corpus, and a spending limit on the provider account.
 
 ## Render, step by step
 
@@ -142,14 +129,13 @@ gcloud run deploy agentic-rag \
   --source . \
   --region europe-west1 \
   --allow-unauthenticated \
-  --port 8000 \
   --memory 1Gi \
   --timeout 900 \
   --set-env-vars LLM_PROVIDER=deepseek,LLM_MODEL_FAST=deepseek-flash,LLM_MODEL_DEEP=deepseek-v4-pro \
   --set-secrets DEEPSEEK_API_KEY=deepseek-key:latest
 ```
 
-`--port 8000` matters because the image listens on 8000 and Cloud Run expects 8080 by default. `--timeout 900` matters too: the default would cut a streaming answer short. Put the key in Secret Manager rather than an environment variable, which is what `--set-secrets` does.
+`--timeout 900` matters: the default would cut a streaming answer short. Put the key in Secret Manager rather than an environment variable, which is what `--set-secrets` does.
 
 ## The quick tunnel, for demos at your desk
 

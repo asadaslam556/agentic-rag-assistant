@@ -15,12 +15,17 @@ Windows users who just want the commands in order, with cache clearing and
 a full reset, can use [`commands.md`](commands.md) instead. To view the
 console on a phone or put it online, see [`deployment.md`](deployment.md).
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/setup-path.architecture.dark.png">
-  <img alt="Setup path: install, first offline run with the mock, checks, then pick a model (Ollama locally or a hosted provider with an API key), open the console, and ingest your own documents; extras such as SQL, the reranker, and the graph are optional" src="diagrams/setup-path.architecture.png">
-</picture>
-
-<sub>Interactive version: [`diagrams/setup-path.architecture.html`](diagrams/setup-path.architecture.html).</sub>
+```mermaid
+flowchart LR
+    A["1-2<br/>Install"] --> B["3-4<br/>Offline run<br/>and checks"]
+    B --> C{"Pick a model"}
+    C -->|free, local| D["5<br/>Ollama"]
+    C -->|hosted| E["5b<br/>Claude, OpenAI,<br/>DeepSeek"]
+    D --> F["7<br/>Web console"]
+    B -.-> H["5d<br/>Database and<br/>reranking"]
+    E --> F
+    F --> G["12<br/>Your own<br/>documents"]
+```
 
 Every step after the first run is optional. The numbers match the sections below.
 
@@ -73,7 +78,7 @@ rag chat             # interactive multi-turn session in the terminal
 
 ```powershell
 pytest                        # 288 tests, all offline
-ruff check src tests scripts  # lint, should be silent
+ruff check src tests          # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 11/11 expected
 ```
@@ -94,7 +99,7 @@ That is the entire configuration. Ask anything again and check the header:
 rag stats
 ```
 
-`llm: ollama:qwen2.5:7b-instruct` in the output means the auto-detection found the server
+`llm=ollama:qwen2.5:7b-instruct` means the auto-detection found the server
 and picked the model. The default `LLM_PROVIDER=auto` probes
 `localhost:11434` on startup, takes the most capable installed model, and
 falls back to the mock with a one-line note when Ollama is off. To pin a
@@ -184,15 +189,11 @@ eval sets cover those paths:
 
 ```powershell
 rag eval --golden eval/golden_set_graph.jsonl          # 4/4
-rag eval --golden eval/golden_set_multilingual.jsonl   # 6/8 from a clone, see below
+rag eval --golden eval/golden_set_multilingual.jsonl   # 8/8, needs the PDFs ingested
 ```
 
-Two of the eight multilingual cases ask about the SAP Q1 2024 statement and the Siemens Healthineers
-Q3 FY2026 earnings release, which are not redistributed here. Download them from the companies'
-investor relations pages into `data/sample_pdfs/` and ingest them to reach 8/8.
-
-[Knowledge graph](knowledge-graph.md) has the schema and the routing rule, and
-[Retrieval](retrieval.md#languages) covers the language handling.
+The [README](../README.md) has the schema, the routing rule, and the
+before-and-after evidence.
 
 ## 5d. Database questions and reranking
 
@@ -309,7 +310,7 @@ tool. The moment the port is reachable by anyone else, set a token in
 `.env`:
 
 ```text
-API_AUTH_TOKEN=<YOUR_API_TOKEN>
+API_AUTH_TOKEN=pick-something-long-and-random
 ```
 
 Every endpoint except `/api/health` then requires the header:
@@ -317,12 +318,9 @@ Every endpoint except `/api/health` then requires the header:
 ```powershell
 curl -s -X POST localhost:8000/api/chat `
      -H "content-type: application/json" `
-     -H "Authorization: Bearer <YOUR_API_TOKEN>" `
+     -H "Authorization: Bearer pick-something-long-and-random" `
      -d '{"question": "What is the payload capacity of the Atlas P2?", "history": []}'
 ```
-
-The console does not send this header yet, so with a token set its own requests fail. Use the
-token for API clients, or put an authenticating proxy in front of the console.
 
 `SECURITY.md` covers the rest: TLS in front, why `/api/ingest` must never
 be exposed to untrusted clients, what `/api/upload` enforces, how planted
@@ -346,9 +344,9 @@ as an unprivileged user; if you are upgrading from an image older than
 docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage
 ```
 
-`.env` is deliberately not copied into the image, so the container uses a
-host Ollama when one answers and the offline mock otherwise. To use provider
-keys, uncomment `env_file` in `docker-compose.yml`. If your `.env` sets
+`.env` is deliberately not copied into the image, so the container answers
+with the offline mock until you opt in: uncomment `env_file` in
+`docker-compose.yml`. If your `.env` sets
 `EMBEDDINGS_PROVIDER=multilingual`, also set the `EXTRAS` build argument to
 `[multilingual]`, because the image leaves sentence-transformers out by
 default to stay small.
@@ -365,7 +363,7 @@ rag ingest C:\path\to\your\docs      # CLI: any folder of txt, md, html, pdf
 ```
 
 or the paperclip button in the console. Re-ingesting the same files skips
-them (tracked by file path), and `rag reset --yes` wipes the index for a
+them (tracked by content), and `rag reset --yes` wipes the index for a
 fresh start. PDFs need embedded text: scanned image-only PDFs come out
 empty because OCR is out of scope here.
 

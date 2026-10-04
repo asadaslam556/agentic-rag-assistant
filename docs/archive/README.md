@@ -80,18 +80,6 @@ rag serve        # http://localhost:8000
 
 Or run everything in Docker with `docker compose up --build`. The [setup guide](docs/setup-guide.md) walks through it step by step, and [`docs/commands.md`](docs/commands.md) is the Windows-first command reference, including cache clearing and a full reset.
 
-## Documentation
-
-| Start here | Then |
-|---|---|
-| [Setup guide](docs/setup-guide.md), step by step | [Architecture](docs/architecture.md), the map |
-| [Command reference](docs/commands.md), Windows first | [Agent and orchestrator](docs/agent.md) |
-| [Configuration](docs/configuration.md), every setting | [Answer turn and streaming](docs/streaming.md) |
-| [API reference](docs/api.md) | [Ingestion](docs/ingestion.md) and [retrieval](docs/retrieval.md) |
-| [Deployment and phones](docs/deployment.md) | [Text-to-SQL](docs/text-to-sql.md), [knowledge graph](docs/knowledge-graph.md), [models](docs/models.md) |
-
-[`docs/README.md`](docs/README.md) indexes every page and diagram.
-
 ## Contents
 
 [Quick start](#quick-start) · [What it does](#what-it-does) · [Architecture](#architecture) · [The layers](#the-layers) · [Choosing a model](#choosing-a-model) · [The console](#the-console) · [PDFs](#pdfs-that-carry-their-meaning-in-pictures) · [Text-to-SQL](#asking-the-database) · [Reranking](#reranking) · [Evaluation](#evaluation) · [Configuration](#configuration) · [Knowledge graph](#the-knowledge-graph) · [Languages](#languages) · [Docker](#docker) · [Deployment](#deployment-and-mobile) · [Security](#security) · [Design decisions](#design-decisions)
@@ -142,14 +130,30 @@ Not every relational question needs this. "Which safety standard does the Atlas 
 
 ### The whole system on one page
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/system-overview.architecture.dark.png">
-  <img alt="System overview: the React console and the rag CLI reach the pipeline through FastAPI; the pipeline runs the orchestrator and agent loop, which call the tools over the vector index, knowledge graph, structured data, and the web; synthesis and the verifier call models through the router" src="docs/diagrams/system-overview.architecture.png">
-</picture>
+```mermaid
+flowchart TB
+    UI["React console<br/>Vite, PWA"] --> API["FastAPI<br/>REST and SSE"]
+    CLI["rag CLI"] --> RW
+    API --> RW["Rewrite follow-up questions"]
+    RW --> ORCH["Orchestrator<br/>decompose, run branches in parallel, merge"]
+    ORCH --> AGENT["Agent loop per branch<br/>plan, call a tool, observe"]
+    AGENT <--> TOOLS["Tools<br/>vector_search, graph_search, web_search,<br/>knowledge_base, sql_query, calculator"]
+    TOOLS --> IDX[("Vectors and BM25<br/>NumPy")]
+    TOOLS --> KG[("Knowledge graph<br/>SQLite or Neo4j")]
+    TOOLS --> CAT[("Catalog<br/>JSON")]
+    TOOLS --> DB[("Orders database<br/>SQLite, read-only")]
+    TOOLS --> WEB(("Web<br/>DuckDuckGo"))
+    AGENT --> ASM["Context assembly<br/>injection filter, dedupe, rank fusion,<br/>optional reranker, token budget"]
+    ASM --> SYN["Synthesis<br/>streamed answer with citations"]
+    SYN --> VER{"Verifier<br/>every claim vs its sources"}
+    VER -- "unsupported claims" --> SYN
+    VER -- "answer and live events" --> API
+    AGENT -.-> LLM{{"Model router<br/>Ollama, Claude, OpenAI, DeepSeek, mock"}}
+    SYN -.-> LLM
+    VER -.-> LLM
+```
 
-<sub>Interactive version: [`docs/diagrams/system-overview.architecture.html`](docs/diagrams/system-overview.architecture.html) (open it locally in a browser).</sub>
-
-Every model call goes through the router, so each role can use a different model, and the offline mock stands in for all of them in tests and CI. In the interactive version each component links to the source file it was drawn from.
+Solid arrows are data, dotted arrows are model calls. Every model call goes through the router, so each role can use a different model, and the offline mock stands in for all of them in tests and CI.
 
 ### Two nested levels
 
@@ -157,29 +161,80 @@ Both plain Python, no agent framework.
 
 The **orchestrator** works out how many independent sub-questions a request really contains, runs a worker for each at the same time, merges what they found, and hands the result to synthesis and verification.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/orchestration.architecture.dark.png">
-  <img alt="Orchestration: decompose into up to MAX_BRANCHES sub-questions, run an agent loop per branch, retry empty branches once while budget lasts, then merge and hand the evidence to context assembly" src="docs/diagrams/orchestration.architecture.png">
-</picture>
-
-<sub>Interactive version: [`docs/diagrams/orchestration.architecture.html`](docs/diagrams/orchestration.architecture.html) (open it locally in a browser).</sub>
+```mermaid
+flowchart TD
+    Q([Question]) --> D[Decompose<br/><i>split into independent parts</i>]
+    D -->|in parallel| B1[Branch 1<br/><i>own agent loop, own state</i>]
+    D -->|in parallel| B2[Branch 2<br/><i>own agent loop, own state</i>]
+    B1 --> M[Merge<br/><i>join point</i>]
+    B2 --> M
+    M --> A[Assemble<br/><i>dedupe, RRF fusion, token budget</i>]
+    A --> S[Synthesise<br/><i>streamed, with citations</i>]
+    S --> V{Verify claims}
+    V -->|failed claims| S
+    V -->|passed| ANS([Cited answer])
+```
 
 Each **worker** is the plan-and-act loop, scoped to one sub-question. Tool edges always return to the planner, which is what lets a branch notice that the corpus answered half the question and the web is needed for the rest, or see an error and route around it.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/agent-loop.architecture.dark.png">
-  <img alt="Agent loop: take a step from the shared budget, plan one JSON action, route to a tool or finish, run the tool, filter the observation, repeat" src="docs/diagrams/agent-loop.architecture.png">
-</picture>
-
-<sub>Interactive version: [`docs/diagrams/agent-loop.architecture.html`](docs/diagrams/agent-loop.architecture.html) (open it locally in a browser).</sub>
+```mermaid
+flowchart TD
+    START([Sub-question]) --> P[plan]
+    P --> R{route}
+    R -->|corpus| VS[vector_search<br/>BM25 + vectors]
+    R -->|outside world| WS[web_search]
+    R -->|facts table| KB[knowledge_base]
+    R -->|counts over records| SQL[sql_query<br/>read-only SELECT]
+    R -->|arithmetic| CALC[calculator]
+    R -->|done| F([finish])
+    VS --> P
+    WS --> P
+    KB --> P
+    SQL --> P
+    CALC --> P
+```
 
 "What does the Scale plan cost **and** how long does deployment take" becomes two branches running concurrently. "What does the Scale plan cost?" stays a single branch and behaves exactly like the original loop, same events in the same order. The extra machinery only appears when the question genuinely has independent parts.
 
 Two things fall out of splitting the levels. Independent parts get researched at the same time instead of one after another, which is what you feel with a slow local model. And the verifier grades the merged result, rather than the same planner that did the work marking its own homework.
 
-[The agent and the orchestrator](docs/agent.md) covers the state design, the shared step budget, the concurrency work, and the decomposer in full.
+[`docs/architecture.md`](docs/architecture.md) covers the state design, the shared step budget, the concurrency work, and the trade-offs in full.
 
 ## The layers
+
+```mermaid
+flowchart TB
+    subgraph interfaces["Interfaces"]
+        direction LR
+        i1["cli.py"] ~~~ i2["api.py"] ~~~ i3["frontend/"]
+    end
+    subgraph wiring["Wiring"]
+        direction LR
+        w1["pipeline.py"] ~~~ w2["config.py"]
+    end
+    subgraph reasoning["Reasoning"]
+        direction LR
+        r1["graph/<br/>orchestration"] ~~~ r2["agent/<br/>plan-and-act loop"] ~~~ r3["tools/"]
+    end
+    subgraph knowledge["Knowledge"]
+        direction LR
+        k1["ingestion/"] ~~~ k2["retrieval/"] ~~~ k3["kg/"]
+    end
+    subgraph quality["Answer quality"]
+        direction LR
+        q1["assembly/"] ~~~ q2["verification/"]
+    end
+    subgraph models["Models"]
+        direction LR
+        m1["llm/"] ~~~ m2["embeddings/"] ~~~ m3["core/<br/>language, tokeniser"]
+    end
+
+    interfaces --> wiring --> reasoning
+    reasoning --> knowledge
+    reasoning --> quality
+    knowledge --> models
+    quality --> models
+```
 
 Each layer only calls the layers below it. Interfaces never touch retrieval directly, and nothing below `pipeline.py` knows whether a question came from the CLI, the API, or a test.
 
@@ -201,12 +256,37 @@ Everything flows through `pipeline.py`, which is the best file to read first.
 
 ### How a question travels
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/chat-stream.sequence.dark.png">
-  <img alt="Sequence: the console posts to /api/chat/stream, the pipeline runs on a worker thread and stage, step, token, and answer events flow back over server-sent events" src="docs/diagrams/chat-stream.sequence.png">
-</picture>
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Console
+    participant A as FastAPI
+    participant P as Pipeline
+    participant B as Agent branches
+    participant T as Tools
+    participant M as Model
 
-<sub>Interactive version: [`docs/diagrams/chat-stream.sequence.html`](docs/diagrams/chat-stream.sequence.html) (open it locally in a browser).</sub>
+    C->>A: POST /api/chat/stream
+    A->>P: chat(question, history)
+    P->>M: rewrite the follow-up
+    P-->>C: rewrite event
+    P->>B: decompose and fan out
+    B-->>C: stage event (planning)
+    loop until finish or the step budget runs out
+        B->>M: plan the next action as JSON
+        B->>T: call the chosen tool
+        T-->>B: ranked evidence with sources
+        B-->>C: step event
+    end
+    P->>P: merge, dedupe, fuse, pack
+    P->>M: write the answer from numbered sources
+    M-->>C: token events, streamed
+    P->>M: check every claim
+    opt some claims are unsupported
+        P->>M: rewrite with targeted feedback
+    end
+    P-->>C: answer event, then done
+```
 
 1. **Remember.** In a conversation, "and what does it cost?" is rewritten into a standalone question using recent turns.
 2. **Decompose.** The orchestrator decides how many independent sub-questions there are. Usually one.
@@ -214,7 +294,7 @@ Everything flows through `pipeline.py`, which is the best file to read first.
 4. **Merge and assemble.** Branch evidence is joined, stripped of sentences that try to instruct the model, deduplicated by text hash, fused with RRF across tools, re-scored against the question (by a cross-encoder when one is configured), and packed into a token budget. The packed order defines the citation numbers.
 5. **Synthesise.** The model writes the answer using only the numbered sources, citing as [1] or [2][3]. Tokens stream out as they are produced.
 6. **Verify.** The answer is split into claims, each checked against the sources it cites, lexically offline and with a dedicated model call when one is available.
-7. **Refine or abstain.** An answer passes when groundedness reaches `MIN_GROUNDEDNESS` (0.7) and at least half its claims cite a source. Failed claims go back to synthesis with targeted feedback; an answer that still fails is returned marked Needs review. If the sources do not contain the answer, the assistant returns an explicit insufficient-evidence response, and the verifier treats that honesty as a pass. [Answer turn and streaming](docs/streaming.md) has the stages and every event.
+7. **Refine or abstain.** Failed claims go back to synthesis with targeted feedback. If the sources do not contain the answer, the assistant returns an explicit insufficient-evidence response, and the verifier treats that honesty as a pass.
 
 ## Choosing a model
 
@@ -317,7 +397,7 @@ rag ingest data/sample_pdfs
 rag ask "How many robots were deployed by the end of Q4?" --trace
 ```
 
-Two independent things can use page images. Descriptions (`PDF_VISION`) default to `auto` and need the `[vision]` extra and a vision-capable model; ColPali is off until you select it.
+Two independent things can use page images, and both are off by default.
 
 ### Reading pages (`PDF_VISION`)
 
@@ -325,7 +405,7 @@ Each page is rendered and read by a vision-capable model, and the description is
 
 ```bash
 pip install -e ".[vision]"      # adds the page renderer
-PDF_VISION=auto                 # off | auto (default) | on
+PDF_VISION=auto                 # off | auto | on
 ```
 
 `auto` only spends a model call when text extraction came back thin, which is the scanned or figure-heavy case where it pays.
@@ -492,7 +572,7 @@ Copy `.env.example` to `.env`. Every setting is documented there.
 | `UPLOAD_MAX_MB` | int | Per-file cap for console uploads |
 | `INGEST_ROOTS` | folders | Where `/api/ingest` may read, default `data`. The CLI is not limited |
 
-Switching embedders invalidates the index on purpose: the store records which embedder built it and refuses mixed vectors. Run `rag reindex` to rebuild from the chunks already stored. Every setting, with its default, is in [Configuration](docs/configuration.md).
+Switching embedders invalidates the index on purpose: the store records which embedder built it and refuses mixed vectors. Run `rag reindex` to rebuild from the chunks already stored, or `rag reset --yes` and re-ingest from the source files.
 
 ## Connecting a real model
 
@@ -654,7 +734,7 @@ agentic-rag-assistant/
     cli.py  api.py         # command line, REST + SSE
   frontend/                # React console, PWA manifest and icons
   data/                    # sample corpus, structured catalog, orders database script, and the demo PDF
-  docs/                    # guides, per-flow pages, API reference, diagrams/ (archify), screenshots
+  docs/                    # architecture, deployment, setup guide, command reference, screenshots
   eval/golden_set.jsonl    # regression questions with categories and expected tools
   scripts/                 # quickcheck, reindex, smoke_language, text check, icon and sample PDF generators
   tests/                   # 288 tests, offline by design
@@ -670,7 +750,7 @@ curl -s -X POST localhost:8000/api/chat -H "content-type: application/json" \
      -d '{"question": "How long does it run on a charge?", "history": []}'
 ```
 
-``/api/health` reports per-component status, including a live probe of the model backend, the SQL database, and the active reranker, and flips to `degraded` when anything is down, so it works as a real readiness check. `/api/chat/stream` takes the same body and answers with server-sent events. `/api/ask` remains for one-shot calls. With `API_AUTH_TOKEN` set, every endpoint except `/api/health` needs `Authorization: Bearer <token>`.
+`/api/health` reports per-component status, including a live probe of the model backend, the SQL database, and the active reranker, and flips to `degraded` when anything is down, so it works as a real readiness check. `/api/chat/stream` takes the same body and answers with server-sent events. `/api/ask` remains for one-shot calls. With `API_AUTH_TOKEN` set, every endpoint except `/api/health` needs `Authorization: Bearer <token>`.
 
 ## Docker
 
@@ -678,7 +758,7 @@ curl -s -X POST localhost:8000/api/chat -H "content-type: application/json" \
 docker compose up --build
 ```
 
-One image with the console built in and the sample corpus pre-indexed, on port 8000. It runs as an unprivileged user (uid 10001) that can only write to `storage/`, and Docker's health check polls `/api/health`. The index, graph, and uploads live in a named volume, so they survive rebuilds. A volume created by an image older than 3.14.0 is owned by root, so fix its ownership once after upgrading: `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage`. `.env` is kept out of the image on purpose, so out of the box the container uses an Ollama running on the host when it answers (through `host.docker.internal`) and the offline mock otherwise. To use your own keys, uncomment `env_file` in `docker-compose.yml`; if your `.env` selects the multilingual embedder, set the `EXTRAS` build argument to `[multilingual]` too.
+One image with the console built in and the sample corpus pre-indexed, on port 8000. It runs as an unprivileged user (uid 10001) that can only write to `storage/`, and Docker's health check polls `/api/health`. The index, graph, and uploads live in a named volume, so they survive rebuilds. A volume created by an image older than 3.14.0 is owned by root, so fix its ownership once after upgrading: `docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage`. Out of the box the container runs on the offline mock, because `.env` is kept out of the image on purpose. To use your own keys, uncomment `env_file` in `docker-compose.yml`; if your `.env` selects the multilingual embedder, set the `EXTRAS` build argument to `[multilingual]` too.
 
 ## Deployment and mobile
 
@@ -718,7 +798,7 @@ Details and the reporting contact are in [`SECURITY.md`](SECURITY.md).
 
 ```bash
 pytest                  # 288 tests, all offline
-ruff check src tests scripts   # lint, the same scope as CI
+ruff check src tests    # lint
 rag eval                # golden set, non-zero exit on regression
 rag eval --judge        # adds faithfulness and relevance
 python scripts/quickcheck.py   # end-to-end sanity run without pytest

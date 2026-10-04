@@ -105,7 +105,7 @@ rag --help
 
 ```powershell
 pytest
-ruff check src tests scripts
+ruff check src tests
 python scripts\quickcheck.py
 ```
 
@@ -210,7 +210,7 @@ pip install -e ".[vision]"
 ```
 
 ```text
-PDF_VISION=auto      # off | auto (default) | on
+PDF_VISION=on        # off | auto | on
 VISION_MAX_PAGES=20
 ```
 
@@ -446,7 +446,7 @@ pip install -e ".[dev]"
 
 # verify
 pytest
-ruff check src tests scripts
+ruff check src tests
 python scripts/quickcheck.py
 
 # first run
@@ -474,10 +474,9 @@ There is a Makefile for the common targets:
 
 ```bash
 make install     # pip install -e ".[dev]"
-make ingest      # rag ingest data/sample_docs
 make demo        # ingest the sample corpus and ask one traced question
 make test        # pytest
-make lint        # ruff check src tests (CI also lints scripts)
+make lint        # ruff check src tests
 make eval        # golden set
 make serve       # rag serve --port 8000
 make ui-install  # npm install in frontend
@@ -540,8 +539,8 @@ rag reset --yes              wipe the index and start over
 ```text
 pytest                        the whole suite, offline
 pytest tests/test_graph.py    one file
-ruff check src tests scripts  lint, the same scope as CI
-ruff check --fix src tests scripts   lint and autofix
+ruff check src tests          lint
+ruff check --fix src tests    lint and autofix
 python scripts/quickcheck.py  end-to-end sanity run without pytest
 python scripts/check_text.py  em dashes and personal paths in tracked text
 python scripts/make_icons.py  regenerate the PWA icons
@@ -598,7 +597,7 @@ Start it with `rag serve`. Interactive docs at <http://localhost:8000/docs>.
 | `/api/ask` | POST | One-shot question, kept for older clients |
 | `/api/ingest` | POST | Index a folder on the server, limited to `INGEST_ROOTS` (default `data`) |
 | `/api/upload` | POST | Upload documents and index them, the remote-safe way to add files |
-| `/api/page-image` | GET | Fetch a rendered page by `page_id`, meant for citations that point at a page, see the known issue in [api.md](api.md#get-apipage-image) |
+| `/api/page-image` | GET | Fetch a rendered page by `page_id`, used by citations that point at a page |
 
 ```bash
 # status of every component
@@ -622,8 +621,8 @@ curl -s -X POST localhost:8000/api/ingest \
 # upload documents from anywhere
 curl -s -X POST localhost:8000/api/upload -F "files=@report.pdf" -F "files=@notes.md"
 
-# a page image by its id: <doc-id>#page<N>, where doc-id is a 12-character hash of the file path
-curl -s "localhost:8000/api/page-image?page_id=<doc-id>%23page2" -o page2.png
+# a page image behind a citation
+curl -s "localhost:8000/api/page-image?page_id=auralis-quarterly-review%23page2" -o page2.png
 ```
 
 With `API_AUTH_TOKEN` set, every call except `/api/health` needs
