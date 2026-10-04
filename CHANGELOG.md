@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+Bug fixes found while rewriting the documentation, and a docs overhaul.
+
+### Fixed
+
+- Page-image links in answers returned 404. The agent loop renumbers
+  evidence to `e1`, `e2`, so the URL is now built from the page's own id.
+- `PDF_VISION=auto` judged every PDF as a single page, because pages are
+  joined with blank lines. It now counts the PDF's real pages.
+- On a split question, evidence ids and call ids repeated across branches,
+  so context assembly could fuse scores of unrelated evidence. Ids are now
+  unique per branch; a single question keeps its ids unchanged.
+- `rag reset` failed on the index errors that tell you to run it. It now
+  removes the index files directly when the index will not load.
+- The console sent no API token, so `API_AUTH_TOKEN` locked it out. It now
+  asks for the token on the first `401`, stores it in the browser, and sends
+  it on every call, page images included.
+- `make lint` now covers `scripts` like CI, and `.PHONY` no longer lists a
+  missing `ask` target.
+- CI also tests Python 3.11, the version the Docker image runs.
+- `.env.example` lists `deepseek` among the providers.
+
+### Documentation
+
+- One architecture guide with a diagram for every flow, plus new API and
+  configuration references; the Mermaid diagrams are replaced by rendered
+  images in light and dark.
+
 ## 3.14.0
 
 Text-to-SQL, optional cross-encoder reranking, and a defence against

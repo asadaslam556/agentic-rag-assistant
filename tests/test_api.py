@@ -306,3 +306,26 @@ def test_text_patterns_stay_fast_on_hostile_input():
     extract_expression("5" * 20000 + " % " + "9" * 20000)
     split_sentences(". " * 20000)
     assert time.perf_counter() - started < 2.0
+
+
+def test_page_image_url_uses_the_page_id_not_the_renumbered_evidence_id():
+    """The agent loop renames evidence to e1, e2; the image URL must still find the page."""
+    from agentic_rag.api import _public_answer
+    from agentic_rag.core.types import Answer, Evidence, VerificationReport
+
+    path = "/srv/storage/pages/images/doc_page2.png"  # check_text: allow
+    evidence = [
+        Evidence(
+            id="e1", text="Bar chart.", source_type="page", source_ref="doc.pdf#page2",
+            title="Doc (page 2)", tool_name="visual_search", image_path=path,
+        )
+    ]
+    answer = Answer(
+        question="q", text="a [1]", citations=[], evidence=evidence,
+        verification=VerificationReport(
+            passed=True, groundedness=1.0, citation_coverage=1.0, verdicts=[], method="lexical"
+        ),
+        steps=[], attempts=0, timings_ms={"total_ms": 1},
+    )
+    payload = _public_answer(answer, {path: "abc123#page2"})
+    assert payload["evidence"][0]["image_url"] == "/api/page-image?page_id=abc123%23page2"

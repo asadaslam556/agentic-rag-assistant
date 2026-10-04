@@ -5,27 +5,19 @@
 [![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white)](https://git-scm.com)
 [![Ollama](https://img.shields.io/badge/Ollama-optional-000000?logo=ollama&logoColor=white)](https://ollama.com/download)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
-[![PowerShell](https://img.shields.io/badge/Windows-PowerShell-5391FE?logo=powershell&logoColor=white)](commands.md)
+[![PowerShell](https://img.shields.io/badge/Windows-PowerShell-5391FE?logo=powershell&logoColor=white)](#2-install)
 
 From zero to a running, verified, streaming assistant. Windows PowerShell
 commands first, macOS and Linux variants where they differ. Nothing here
 needs an API key or a paid service.
 
-Windows users who just want the commands in order, with cache clearing and
-a full reset, can use [`commands.md`](commands.md) instead. To view the
+Every setting is listed in [`configuration.md`](configuration.md). To view the
 console on a phone or put it online, see [`deployment.md`](deployment.md).
 
-```mermaid
-flowchart LR
-    A["1-2<br/>Install"] --> B["3-4<br/>Offline run<br/>and checks"]
-    B --> C{"Pick a model"}
-    C -->|free, local| D["5<br/>Ollama"]
-    C -->|hosted| E["5b<br/>Claude, OpenAI,<br/>DeepSeek"]
-    D --> F["7<br/>Web console"]
-    B -.-> H["5d<br/>Database and<br/>reranking"]
-    E --> F
-    F --> G["12<br/>Your own<br/>documents"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/setup-path-dark.png">
+  <img alt="Setup path: install, first offline run with the mock, checks, then pick a model (Ollama locally or a hosted provider with an API key), open the console, and ingest your own documents; extras such as SQL, the reranker, and the graph are optional" src="images/setup-path.png">
+</picture>
 
 Every step after the first run is optional. The numbers match the sections below.
 
@@ -77,8 +69,8 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 288 tests, all offline
-ruff check src tests          # lint, should be silent
+pytest                        # 293 tests, all offline
+ruff check src tests scripts  # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 11/11 expected
 ```
@@ -99,7 +91,7 @@ That is the entire configuration. Ask anything again and check the header:
 rag stats
 ```
 
-`llm=ollama:qwen2.5:7b-instruct` means the auto-detection found the server
+`llm: ollama:qwen2.5:7b-instruct` in the output means the auto-detection found the server
 and picked the model. The default `LLM_PROVIDER=auto` probes
 `localhost:11434` on startup, takes the most capable installed model, and
 falls back to the mock with a one-line note when Ollama is off. To pin a
@@ -189,11 +181,15 @@ eval sets cover those paths:
 
 ```powershell
 rag eval --golden eval/golden_set_graph.jsonl          # 4/4
-rag eval --golden eval/golden_set_multilingual.jsonl   # 8/8, needs the PDFs ingested
+rag eval --golden eval/golden_set_multilingual.jsonl   # 6/8 from a clone, see below
 ```
 
-The [README](../README.md) has the schema, the routing rule, and the
-before-and-after evidence.
+Two of the eight multilingual cases ask about the SAP Q1 2024 statement and the Siemens Healthineers
+Q3 FY2026 earnings release, which are not redistributed here. Download them from the companies'
+investor relations pages into `data/sample_pdfs/` and ingest them to reach 8/8.
+
+[Knowledge graph](architecture.md#the-knowledge-graph) has the schema and the routing rule, and
+[Retrieval](architecture.md#languages) covers the language handling.
 
 ## 5d. Database questions and reranking
 
@@ -241,7 +237,7 @@ cd frontend; npm run build; cd ..
 rag serve                     # console + API together on http://localhost:8000
 ```
 
-![The console with a verified, cited answer and its reasoning steps](dashboard-light.png)
+![The console with a verified, cited answer and its reasoning steps](images/dashboard-light.png)
 
 What to try in it:
 
@@ -310,7 +306,7 @@ tool. The moment the port is reachable by anyone else, set a token in
 `.env`:
 
 ```text
-API_AUTH_TOKEN=pick-something-long-and-random
+API_AUTH_TOKEN=<YOUR_API_TOKEN>
 ```
 
 Every endpoint except `/api/health` then requires the header:
@@ -318,9 +314,12 @@ Every endpoint except `/api/health` then requires the header:
 ```powershell
 curl -s -X POST localhost:8000/api/chat `
      -H "content-type: application/json" `
-     -H "Authorization: Bearer pick-something-long-and-random" `
+     -H "Authorization: Bearer <YOUR_API_TOKEN>" `
      -d '{"question": "What is the payload capacity of the Atlas P2?", "history": []}'
 ```
+
+The console asks for the token the first time the server answers `401`, keeps it in that browser's
+local storage, and sends it on every call, page images included.
 
 `SECURITY.md` covers the rest: TLS in front, why `/api/ingest` must never
 be exposed to untrusted clients, what `/api/upload` enforces, how planted
@@ -344,9 +343,9 @@ as an unprivileged user; if you are upgrading from an image older than
 docker compose run --rm -u root agentic-rag chown -R 10001:10001 /app/storage
 ```
 
-`.env` is deliberately not copied into the image, so the container answers
-with the offline mock until you opt in: uncomment `env_file` in
-`docker-compose.yml`. If your `.env` sets
+`.env` is deliberately not copied into the image, so the container uses a
+host Ollama when one answers and the offline mock otherwise. To use provider
+keys, uncomment `env_file` in `docker-compose.yml`. If your `.env` sets
 `EMBEDDINGS_PROVIDER=multilingual`, also set the `EXTRAS` build argument to
 `[multilingual]`, because the image leaves sentence-transformers out by
 default to stay small.
@@ -363,7 +362,7 @@ rag ingest C:\path\to\your\docs      # CLI: any folder of txt, md, html, pdf
 ```
 
 or the paperclip button in the console. Re-ingesting the same files skips
-them (tracked by content), and `rag reset --yes` wipes the index for a
+them (tracked by file path), and `rag reset --yes` wipes the index for a
 fresh start. PDFs need embedded text: scanned image-only PDFs come out
 empty because OCR is out of scope here.
 
@@ -381,7 +380,7 @@ git push -u origin main
 ```
 
 `.gitignore` keeps `.env`, `storage/`, local editor settings, and third-party
-PDFs out of the repository. CI runs on the push: lint, the full test suite on Python 3.10 and 3.12, the
+PDFs out of the repository. CI runs on the push: lint, the full test suite on Python 3.10, 3.11, and 3.12, the
 golden-set eval, and a frontend build, all without any secrets configured.
 
 ## 14. Troubleshooting

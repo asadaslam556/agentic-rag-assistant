@@ -1,7 +1,7 @@
 # Convenience targets (macOS/Linux). Windows users: run the commands directly,
-# see docs/commands.md for PowerShell equivalents.
+# see docs/setup-guide.md for the PowerShell commands.
 
-.PHONY: install demo ingest ask test lint eval serve ui-install ui-dev ui-build icons sample-pdf clean
+.PHONY: install demo ingest test lint eval serve ui-install ui-dev ui-build icons sample-pdf clean
 
 install:
 	pip install -e ".[dev]"
@@ -16,7 +16,7 @@ test:
 	pytest
 
 lint:
-	ruff check src tests
+	ruff check src tests scripts
 
 eval:
 	rag eval

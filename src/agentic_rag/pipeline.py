@@ -43,6 +43,20 @@ from agentic_rag.verification.verifier import Verifier, feedback_from_report
 _MARKER = re.compile(r"\[(\d{1,2})\]")
 
 
+def _pdf_page_count(path: Path) -> int:
+    """Real page count, so PDF_VISION=auto judges text per page.
+
+    The loader joins pages with blank lines, so the extracted text alone
+    cannot tell one long page from many short ones.
+    """
+    try:
+        from pypdf import PdfReader
+
+        return len(PdfReader(str(path)).pages)
+    except Exception:  # noqa: BLE001 - an unreadable PDF already failed to load
+        return 1
+
+
 class AgenticRAG:
     """Facade wiring every component together from a Settings object."""
 
@@ -210,7 +224,7 @@ class AgenticRAG:
         from agentic_rag.ingestion.pdf_vision import render_pages as render
 
         llm = self.router.client_for("vision")
-        page_count = document.text.count("\f") + 1
+        page_count = _pdf_page_count(file)
         wants_description = vision_enabled(self.settings, llm, document.text, page_count)
         wants_colpali = self.encoder is not None
         if not (wants_description or wants_colpali):

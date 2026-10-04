@@ -799,3 +799,33 @@ def test_real_places_are_still_found(tmp_path):
     ):
         places = [e.name for e in extract(sentence).entities if e.type == "LOCATION"]
         assert expected in places, f"{sentence!r} produced {places}"
+
+
+def test_reset_recovers_an_index_that_will_not_load(tmp_path):
+    """The load error tells people to run reset, so reset must not need a loadable index."""
+    import argparse
+    import json
+    import os
+
+    from agentic_rag.cli import cmd_reset
+
+    rag = AgenticRAG(_settings(tmp_path))
+    document = Document(id="d", path="d.md", title="D", text=MADE_BY_TEXT)
+    rag.store.add_chunks(chunk_document(document, target_chars=400, overlap_chars=0))
+    rag.close()
+    manifest = tmp_path / "index" / "manifest.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["embedder"] = "some-other-embedder"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    os.environ["STORAGE_DIR"] = str(tmp_path)
+    os.environ["LLM_PROVIDER"] = "mock"
+    os.environ["EMBEDDINGS_PROVIDER"] = "local"
+    try:
+        assert cmd_reset(argparse.Namespace(yes=True)) == 0
+    finally:
+        os.environ.pop("STORAGE_DIR", None)
+        os.environ.pop("LLM_PROVIDER", None)
+        os.environ.pop("EMBEDDINGS_PROVIDER", None)
+    assert not manifest.exists()
+    assert AgenticRAG(_settings(tmp_path)).store.count == 0

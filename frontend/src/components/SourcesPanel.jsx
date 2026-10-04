@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { pageImageSrc } from "../api.js";
+
 const TYPE_LABELS = {
   vector: "document",
   page: "page image",
@@ -8,6 +11,31 @@ const TYPE_LABELS = {
   calculation: "calculation",
 };
 
+// With an API token the image has to be fetched with the header, see pageImageSrc.
+function PageThumb({ url, title }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    let objectUrl = "";
+    let live = true;
+    pageImageSrc(url)
+      .then((value) => {
+        if (value !== url) objectUrl = value;
+        if (live) setSrc(value);
+      })
+      .catch(() => live && setSrc(""));
+    return () => {
+      live = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url]);
+  if (!src) return null;
+  return (
+    <a href={src} target="_blank" rel="noreferrer" className="page-thumb">
+      <img src={src} alt={`Page image for ${title}`} loading="lazy" />
+    </a>
+  );
+}
+
 function SourceCard({ marker, item, anchorPrefix }) {
   if (!item) return null;
   return (
@@ -17,11 +45,7 @@ function SourceCard({ marker, item, anchorPrefix }) {
         <span className="source-title">{item.title}</span>
         <span className={`type t-${item.source_type}`}>{TYPE_LABELS[item.source_type] || item.source_type}</span>
       </div>
-      {item.image_url && (
-        <a href={item.image_url} target="_blank" rel="noreferrer" className="page-thumb">
-          <img src={item.image_url} alt={`Page image for ${item.title}`} loading="lazy" />
-        </a>
-      )}
+      {item.image_url && <PageThumb url={item.image_url} title={item.title} />}
       <p className="source-text">{item.text}</p>
       {item.url ? (
         <a className="ref" href={item.url} target="_blank" rel="noreferrer">

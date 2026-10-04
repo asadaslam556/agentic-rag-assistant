@@ -9,20 +9,13 @@ no data leaves your computer except the web searches the agent chooses to run.
 
 ## Trust boundaries
 
-```mermaid
-flowchart LR
-    subgraph local["Your machine"]
-        UI["Console"] --> API["FastAPI"]
-        API --> STORE[("storage/<br/>index and uploads")]
-        API --> DB[("SQL database<br/>read-only")]
-        API --> OLLAMA["Ollama<br/>optional"]
-        ENV[".env<br/>keys, never committed"] -.-> API
-    end
-    API -->|only when configured| CLOUD["Hosted model API"]
-    SEARCH["Web search"] -->|untrusted text, filtered| API
-    API -->|when the agent chooses| SEARCH
-    REMOTE["Anyone else"] -.->|needs API_AUTH_TOKEN and TLS| API
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/trust-boundaries-dark.png">
+  <img alt="Trust boundaries: clients, uploaded files, and web results are untrusted; inside the server process, requests pass the bearer-token check, uploads pass type, size, and path checks, web and document text passes the injection filter, SQL runs read-only in SQLite, and the verifier checks every claim" src="docs/images/trust-boundaries.png">
+</picture>
+
+<sub>Keys live in `.env`, which is gitignored and kept out of the Docker image; hosted model APIs are only
+called when configured.</sub>
 
 ## Before exposing the server
 

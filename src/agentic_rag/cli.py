@@ -175,7 +175,13 @@ def cmd_reset(args: argparse.Namespace) -> int:
         if confirm != "y":
             print("Aborted.")
             return 1
-    rag = _build_pipeline()
+    settings = Settings.from_env()
+    try:
+        rag = AgenticRAG(settings)
+    except RuntimeError as exc:
+        # an index that will not load is exactly what reset is for, so
+        # remove its files directly instead of building the pipeline
+        return _reset_files(settings, exc)
     rag.store.clear()
     # page records and rendered images live beside the text index and would
     # otherwise survive a reset and be duplicated on the next ingest
@@ -194,6 +200,30 @@ def cmd_reset(args: argparse.Namespace) -> int:
         parts.append(f"{entities} graph entities")
     message = parts[0] + "." if len(parts) == 1 else parts[0] + ", along with " + " and ".join(parts[1:]) + "."
     print(paint(message, "green"))
+    return 0
+
+
+def _reset_files(settings: Settings, reason: Exception) -> int:
+    import shutil
+
+    print(paint(f"note: the index could not be loaded ({str(reason)[:200]}), removing its files", "dim"))
+    removed = 0
+    for name in ("vectors.npy", "chunks.jsonl", "manifest.json"):
+        path = settings.index_path / name
+        if path.exists():
+            path.unlink()
+            removed += 1
+    pages = settings.storage_path / "pages"
+    if pages.exists():
+        shutil.rmtree(pages)
+        removed += 1
+    if (settings.graph_store or "sqlite") == "sqlite":
+        for suffix in ("", "-wal", "-shm"):
+            path = settings.graph_path.with_name(settings.graph_path.name + suffix)
+            if path.exists():
+                path.unlink()
+                removed += 1
+    print(paint(f"Index cleared ({removed} item(s) removed).", "green"))
     return 0
 
 

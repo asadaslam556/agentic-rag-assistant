@@ -19,21 +19,19 @@ cd frontend && npm install && cd ..
 
 ## How a change gets in
 
-```mermaid
-flowchart TD
-    BR["Branch from main"] --> CODE["Change plus tests"]
-    CODE --> LOCAL["Run the checks below"]
-    LOCAL --> PR["Open a pull request"]
-    PR --> CI{"CI: ruff, text checks, pytest on 3.10 and 3.12,<br/>golden eval, console build"}
-    CI -->|red| CODE
-    CI -->|green| REVIEW["Review and merge"]
-```
+Branch from `main`, make the change with tests, run the checks below, and open a pull request. CI runs
+two jobs on every push to `main` and every pull request:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/ci-dark.png">
+  <img alt="CI: the backend job on Python 3.10, 3.11, and 3.12 installs the package, runs pip-audit on 3.12, ruff and the text checks, pytest, and the offline mock eval; the frontend job on Node 22 runs npm ci, npm audit at high severity, and the console build" src="docs/images/ci.png">
+</picture>
 
 ## Before opening a pull request
 
 ```bash
 pytest                     # the whole suite must pass
-ruff check src tests       # zero findings
+ruff check src tests scripts   # zero findings, the same scope as CI
 rag ingest data/sample_docs && rag eval   # golden set must stay at 11/11,
                                          # including expected tools
 cd frontend && npm run build              # the console must build

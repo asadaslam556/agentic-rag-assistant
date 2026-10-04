@@ -83,7 +83,16 @@ class GraphRunner:
         """Join point. Assembly deduplicates and re-ranks, so branch order is enough here."""
         evidence: list[Evidence] = []
         steps: list[AgentStep] = []
+        call_offset = 0
         for state in states:
+            # every branch numbers its evidence e1, e2 and its tool calls from 1,
+            # and assembly keys rank fusion by evidence id and groups by call id,
+            # so ids must not repeat across branches. One branch keeps its ids.
+            if len(states) > 1:
+                for item in state.evidence:
+                    item.id = f"b{state.index + 1}-{item.id}"
+                    item.call_id += call_offset
+                call_offset = max((item.call_id for item in state.evidence), default=call_offset)
             evidence.extend(state.evidence)
             for step in state.steps:
                 step.branch = state.index
