@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.14.1
 
 Bug fixes found while rewriting the documentation, and a docs overhaul.
 

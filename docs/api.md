@@ -47,7 +47,7 @@ as any component is down.
 ```json
 {
   "status": "ok",
-  "version": "3.14.0",
+  "version": "3.14.1",
   "llm": "mock",
   "embedder": "local-hash-v1",
   "search_provider": "ddgs",
