@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Text-to-SQL: one read-only query, locked down in SQLite",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/asadaslam556/agentic-rag-assistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3"
+    },
+    "viewBox": [1220, 680],
+    "views": [
+      {
+        "id": "query",
+        "label": "Query",
+        "focus": ["planner", "tool", "db", "rows", "observe"],
+        "note": "The planner writes one SELECT from the schema in the tool description."
+      },
+      {
+        "id": "locks",
+        "label": "Locks",
+        "focus": ["authorizer", "readonly", "limits", "db"],
+        "note": "Safety lives in SQLite itself, never in text filtering of the SQL."
+      },
+      {
+        "id": "errors",
+        "label": "Self-repair",
+        "focus": ["db", "error", "observe", "planner"],
+        "note": "A failed query comes back with the SQLite error so the model can fix it."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "planner",
+      "type": "cloud",
+      "label": "Planner",
+      "sublabel": "sees schema + examples",
+      "pos": [30, 270],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 120, "label": "tool description" }]
+    },
+    {
+      "id": "tool",
+      "type": "backend",
+      "label": "sql_query",
+      "sublabel": "1-2000 chars",
+      "pos": [230, 270],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 141, "label": "run" }]
+    },
+    {
+      "id": "authorizer",
+      "type": "security",
+      "label": "Authorizer",
+      "sublabel": "reads + listed functions",
+      "pos": [330, 80],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 61, "label": "_authorize" }]
+    },
+    {
+      "id": "readonly",
+      "type": "security",
+      "label": "query_only",
+      "sublabel": "second lock",
+      "pos": [530, 80],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 109, "label": "PRAGMA query_only" }]
+    },
+    {
+      "id": "limits",
+      "type": "security",
+      "label": "Limits",
+      "sublabel": "2 s, 1 MB, 1 statement",
+      "pos": [730, 80],
+      "size": [150, 64],
+      "sources": [
+        { "path": "src/agentic_rag/tools/sql.py", "line": 149, "label": "progress handler" },
+        { "path": "src/agentic_rag/tools/sql.py", "line": 115, "label": "length limit" }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "sales.sql in memory",
+      "pos": [530, 270],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 70, "label": "_open" }]
+    },
+    {
+      "id": "rows",
+      "type": "backend",
+      "label": "Rows",
+      "sublabel": "at most 50",
+      "pos": [830, 270],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 168, "label": "MAX_ROWS" }]
+    },
+    {
+      "id": "observe",
+      "type": "backend",
+      "label": "Observation",
+      "sublabel": "rows as sentences",
+      "pos": [1030, 270],
+      "size": [150, 64]
+    },
+    {
+      "id": "error",
+      "type": "security",
+      "label": "Query failed",
+      "sublabel": "SQLite error text",
+      "pos": [530, 460],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/tools/sql.py", "line": 157, "label": "error observation" }]
+    }
+  ],
+  "connections": [
+    { "id": "planner-tool", "from": "planner", "to": "tool", "variant": "emphasis" },
+    { "id": "tool-db", "from": "tool", "to": "db", "label": "SELECT", "variant": "emphasis" },
+    { "id": "db-rows", "from": "db", "to": "rows", "variant": "emphasis" },
+    { "id": "rows-observe", "from": "rows", "to": "observe", "variant": "emphasis" },
+    { "id": "authorizer-db", "from": "authorizer", "to": "db", "variant": "security", "fromSide": "bottom", "toSide": "top" },
+    { "id": "readonly-db", "from": "readonly", "to": "db", "variant": "security", "fromSide": "bottom", "toSide": "top" },
+    { "id": "limits-db", "from": "limits", "to": "db", "variant": "security", "fromSide": "bottom", "toSide": "top" },
+    {
+      "id": "db-error",
+      "from": "db",
+      "to": "error",
+      "label": "refused or invalid",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [605, 397]
+    },
+    {
+      "id": "error-observe",
+      "from": "error",
+      "to": "observe",
+      "label": "error as observation",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "observe-planner",
+      "from": "observe",
+      "to": "planner",
+      "label": "next step",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[1105, 30], [105, 30]]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Refused before running",
+      "items": [
+        "INSERT, UPDATE, DELETE, CREATE, DROP, ATTACH, PRAGMA",
+        "randomblob, zeroblob, printf, load_extension"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Offline mock",
+      "items": [
+        "Only runs the -- Q: / -- SQL: worked examples in the .sql file",
+        "SQL_DATABASE_PATH blank turns the tool off"
+      ]
+    }
+  ]
+}

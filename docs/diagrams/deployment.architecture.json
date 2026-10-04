@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Deployment: two-stage image, one container, one volume",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/asadaslam556/agentic-rag-assistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3"
+    },
+    "viewBox": [1220, 660],
+    "views": [
+      {
+        "id": "build",
+        "label": "Build",
+        "focus": ["console", "python", "ingest"],
+        "note": "The console is built in Node, then copied into the Python image with a ready index."
+      },
+      {
+        "id": "run",
+        "label": "Run",
+        "focus": ["browser", "server", "volume"],
+        "note": "docker compose up serves the API and console on port 8000."
+      },
+      {
+        "id": "models",
+        "label": "Models",
+        "focus": ["server", "ollama", "providers"],
+        "note": "Ollama on the host by default; hosted providers only with keys from .env."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "console",
+      "type": "frontend",
+      "label": "Console stage",
+      "sublabel": "node:22-alpine",
+      "pos": [30, 60],
+      "size": [150, 64],
+      "sources": [{ "path": "Dockerfile", "line": 2, "label": "FROM node" }]
+    },
+    {
+      "id": "python",
+      "type": "backend",
+      "label": "Python stage",
+      "sublabel": "python:3.11-slim",
+      "pos": [230, 60],
+      "size": [150, 64],
+      "sources": [{ "path": "Dockerfile", "line": 10, "label": "FROM python" }]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "Sample index",
+      "sublabel": "rag ingest at build",
+      "pos": [430, 60],
+      "size": [150, 64],
+      "sources": [{ "path": "Dockerfile", "line": 29, "label": "rag ingest" }]
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser",
+      "sublabel": "console + /api",
+      "pos": [30, 300],
+      "size": [150, 64]
+    },
+    {
+      "id": "server",
+      "type": "security",
+      "label": "rag serve",
+      "sublabel": "uid 10001, healthcheck",
+      "pos": [630, 300],
+      "size": [150, 64],
+      "sources": [
+        { "path": "Dockerfile", "line": 32, "label": "USER rag" },
+        { "path": "Dockerfile", "line": 37, "label": "HEALTHCHECK" }
+      ]
+    },
+    {
+      "id": "volume",
+      "type": "database",
+      "label": "rag-storage",
+      "sublabel": "/app/storage",
+      "pos": [630, 490],
+      "size": [150, 64],
+      "sources": [{ "path": "docker-compose.yml", "line": 25, "label": "volume" }]
+    },
+    {
+      "id": "ollama",
+      "type": "external",
+      "label": "Ollama",
+      "sublabel": "on the host :11434",
+      "pos": [1030, 200],
+      "size": [150, 64],
+      "sources": [{ "path": "docker-compose.yml", "line": 12, "label": "OLLAMA_BASE_URL" }]
+    },
+    {
+      "id": "providers",
+      "type": "cloud",
+      "label": "Hosted LLMs",
+      "sublabel": "optional, keys in .env",
+      "pos": [1030, 400],
+      "size": [150, 64],
+      "sources": [{ "path": "docker-compose.yml", "line": 18, "label": "env_file" }]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "docker build (Dockerfile)", "wraps": ["console", "python", "ingest"], "pad": 20 },
+    { "kind": "security-group", "label": "container", "wraps": ["server"], "pad": 16 }
+  ],
+  "connections": [
+    { "id": "console-python", "from": "console", "to": "python", "label": "dist", "variant": "emphasis" },
+    { "id": "python-ingest", "from": "python", "to": "ingest", "variant": "emphasis" },
+    {
+      "id": "ingest-server",
+      "from": "ingest",
+      "to": "server",
+      "label": "image",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    { "id": "browser-server", "from": "browser", "to": "server", "label": "8000:8000", "variant": "emphasis" },
+    {
+      "id": "server-volume",
+      "from": "server",
+      "to": "volume",
+      "label": "index, graph, uploads",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [705, 437]
+    },
+    { "id": "server-ollama", "from": "server", "to": "ollama", "label": "host.docker.internal", "fromSide": "right", "toSide": "left", "labelSegment": 2 },
+    { "id": "server-providers", "from": "server", "to": "providers", "label": "HTTPS", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelSegment": 2 }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Image",
+      "items": [
+        "--build-arg EXTRAS adds optional extras such as multilingual",
+        "storage/ is owned by uid 10001, the only place it writes"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Before exposing",
+      "items": [
+        "Set API_AUTH_TOKEN before opening the port beyond localhost",
+        "HEALTHCHECK polls /api/health every 30 s"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Hosted",
+      "items": [
+        "Render and Cloud Run are described in docs/deployment.md",
+        "The repo ships no platform config files"
+      ]
+    }
+  ]
+}

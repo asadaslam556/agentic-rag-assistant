@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "One answer turn: stages and the verification gate",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/asadaslam556/agentic-rag-assistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3"
+    },
+    "viewBox": [1220, 540],
+    "views": [
+      {
+        "id": "stages",
+        "label": "Stages",
+        "focus": ["question", "planning", "assembling", "synthesizing", "verifying", "passed"],
+        "note": "The stage events the console shows, in order."
+      },
+      {
+        "id": "loops",
+        "label": "Retry and refine",
+        "focus": ["planning", "retrying", "verifying", "refining"],
+        "note": "Empty branches get one retry; a failed check gets a redraft with feedback."
+      },
+      {
+        "id": "exits",
+        "label": "Exits",
+        "focus": ["verifying", "refining", "passed", "review"],
+        "note": "Every answer is returned; a failed check is flagged, not hidden."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "question",
+      "type": "external",
+      "label": "Question",
+      "sublabel": "rewritten if follow-up",
+      "pos": [30, 130],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/pipeline.py", "line": 289, "label": "_rewrite" }]
+    },
+    {
+      "id": "planning",
+      "type": "backend",
+      "label": "planning",
+      "sublabel": "branches, agent loop",
+      "pos": [230, 130],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/graph/runner.py", "line": 103, "label": "stage planning" }]
+    },
+    {
+      "id": "assembling",
+      "type": "backend",
+      "label": "assembling",
+      "sublabel": "numbered sources",
+      "pos": [430, 130],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/pipeline.py", "line": 299, "label": "stage assembling" }]
+    },
+    {
+      "id": "synthesizing",
+      "type": "cloud",
+      "label": "synthesizing",
+      "sublabel": "cited draft, tokens",
+      "pos": [630, 130],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/pipeline.py", "line": 304, "label": "stage synthesizing" }]
+    },
+    {
+      "id": "verifying",
+      "type": "security",
+      "label": "verifying",
+      "sublabel": "every claim",
+      "pos": [830, 130],
+      "size": [150, 64],
+      "sources": [
+        { "path": "src/agentic_rag/pipeline.py", "line": 311, "label": "stage verifying" },
+        { "path": "src/agentic_rag/verification/verifier.py", "line": 157, "label": "pass rule" }
+      ]
+    },
+    {
+      "id": "passed",
+      "type": "backend",
+      "label": "Passed",
+      "sublabel": "answer returned",
+      "pos": [1030, 130],
+      "size": [150, 64]
+    },
+    {
+      "id": "retrying",
+      "type": "backend",
+      "label": "retrying",
+      "sublabel": "empty branch, once",
+      "pos": [230, 320],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/graph/runner.py", "line": 109, "label": "stage retrying" }]
+    },
+    {
+      "id": "refining",
+      "type": "cloud",
+      "label": "refining",
+      "sublabel": "redraft + feedback",
+      "pos": [830, 320],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/pipeline.py", "line": 317, "label": "stage refining" }]
+    },
+    {
+      "id": "review",
+      "type": "security",
+      "label": "Needs review",
+      "sublabel": "returned, flagged",
+      "pos": [1030, 320],
+      "size": [150, 64]
+    }
+  ],
+  "connections": [
+    { "id": "question-planning", "from": "question", "to": "planning", "variant": "emphasis" },
+    { "id": "planning-assembling", "from": "planning", "to": "assembling", "variant": "emphasis" },
+    { "id": "assembling-synthesizing", "from": "assembling", "to": "synthesizing", "variant": "emphasis" },
+    { "id": "synthesizing-verifying", "from": "synthesizing", "to": "verifying", "variant": "emphasis" },
+    { "id": "verifying-passed", "from": "verifying", "to": "passed", "variant": "emphasis" },
+    {
+      "id": "planning-retrying",
+      "from": "planning",
+      "to": "retrying",
+      "label": "empty branch",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [305, 257]
+    },
+    {
+      "id": "retrying-assembling",
+      "from": "retrying",
+      "to": "assembling",
+      "label": "merged",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "verifying-refining",
+      "from": "verifying",
+      "to": "refining",
+      "label": "failed",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [905, 257]
+    },
+    {
+      "id": "refining-review",
+      "from": "refining",
+      "to": "review",
+      "label": "fails",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Pass rule",
+      "items": [
+        "groundedness >= MIN_GROUNDEDNESS (0.7) and citation coverage >= 0.5",
+        "The fixed not-enough-evidence answer always passes"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "When it fails",
+      "items": [
+        "Up to MAX_REFINE_ATTEMPTS (1) redrafts, each checked again",
+        "A redraft that passes is returned as Passed",
+        "Still failing: returned anyway and marked Needs review"
+      ]
+    }
+  ]
+}

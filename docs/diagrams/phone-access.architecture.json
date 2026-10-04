@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Opening the console on a phone: which setup fits",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/asadaslam556/agentic-rag-assistant",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "215fdd559cb3d92a5ed7ec8520dcc353f06f75d3"
+    },
+    "viewBox": [1220, 640],
+    "views": [
+      {
+        "id": "local",
+        "label": "Computer on",
+        "focus": ["start", "q1", "q2", "lan", "tunnel"],
+        "note": "A LAN address or a tunnel only works while your machine runs rag serve."
+      },
+      {
+        "id": "anywhere",
+        "label": "Anywhere",
+        "focus": ["q1", "deploy", "install"],
+        "note": "A link that works with the computer off needs a deployed container."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "start",
+      "type": "external",
+      "label": "Phone",
+      "sublabel": "open the console",
+      "pos": [30, 250],
+      "size": [150, 64]
+    },
+    {
+      "id": "q1",
+      "type": "backend",
+      "label": "Computer on?",
+      "sublabel": "running rag serve",
+      "pos": [260, 250],
+      "size": [150, 64]
+    },
+    {
+      "id": "q2",
+      "type": "backend",
+      "label": "Same wifi?",
+      "sublabel": "phone and computer",
+      "pos": [520, 250],
+      "size": [150, 64]
+    },
+    {
+      "id": "lan",
+      "type": "backend",
+      "label": "LAN address",
+      "sublabel": "--host 0.0.0.0",
+      "pos": [780, 90],
+      "size": [150, 64],
+      "sources": [{ "path": "src/agentic_rag/cli.py", "line": 459, "label": "--host default 127.0.0.1" }]
+    },
+    {
+      "id": "tunnel",
+      "type": "external",
+      "label": "Tunnel",
+      "sublabel": "cloudflared or ngrok",
+      "pos": [780, 250],
+      "size": [150, 64]
+    },
+    {
+      "id": "deploy",
+      "type": "cloud",
+      "label": "Deploy",
+      "sublabel": "Render or Cloud Run",
+      "pos": [520, 450],
+      "size": [150, 64],
+      "sources": [{ "path": "Dockerfile", "line": 39, "label": "CMD rag serve" }]
+    },
+    {
+      "id": "install",
+      "type": "frontend",
+      "label": "Install as app",
+      "sublabel": "PWA over HTTPS",
+      "pos": [1040, 250],
+      "size": [150, 64],
+      "sources": [{ "path": "frontend/index.html", "line": 16, "label": "manifest" }]
+    }
+  ],
+  "connections": [
+    { "id": "start-q1", "from": "start", "to": "q1", "variant": "emphasis" },
+    { "id": "q1-q2", "from": "q1", "to": "q2", "label": "yes", "variant": "emphasis" },
+    {
+      "id": "q1-deploy",
+      "from": "q1",
+      "to": "deploy",
+      "label": "no",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    { "id": "q2-lan", "from": "q2", "to": "lan", "label": "yes", "fromSide": "top", "toSide": "left" },
+    { "id": "q2-tunnel", "from": "q2", "to": "tunnel", "label": "no", "variant": "emphasis" },
+    { "id": "tunnel-install", "from": "tunnel", "to": "install", "label": "HTTPS", "variant": "emphasis" },
+    {
+      "id": "deploy-install",
+      "from": "deploy",
+      "to": "install",
+      "label": "HTTPS",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Computer off",
+      "items": [
+        "Only a deployed container keeps the link alive",
+        "Ollama does not run on a free tier, use a provider key"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Computer on",
+      "items": [
+        "LAN works on the same wifi only, over plain HTTP",
+        "Set API_AUTH_TOKEN before exposing the port"
+      ]
+    }
+  ]
+}
