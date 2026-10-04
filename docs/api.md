@@ -20,9 +20,8 @@ Authorization: Bearer <YOUR_API_TOKEN>
 
 A missing or wrong token gets `401`. The comparison is constant-time.
 
-> Known issue: the console does not send an `Authorization` header (`frontend/src/api.js`), so with
-> `API_AUTH_TOKEN` set the console's protected calls fail. Use the token for API clients, or put an
-> authenticating proxy in front of the console.
+The console asks for the token the first time the server answers `401`, keeps it in that browser's
+local storage, and sends it on every call, page images included.
 
 CORS allows only the Vite dev server (`http://localhost:5173`, `http://127.0.0.1:5173`).
 
@@ -137,10 +136,8 @@ file could not be read.
 ### GET /api/page-image
 
 `?page_id=<id>` returns one rendered page as `image/png`. Only pages in the page index can be fetched.
-
-> Known issue: answer payloads build `image_url` from the evidence id, which the orchestrator renumbers
-> to `e1`, `e2`, and so on, while this endpoint looks pages up by their original id. Page-image links in
-> answers therefore return `404`.
+A page id is `<doc-id>#page<N>`, where the document id is a hash of the file path; answer payloads
+carry a ready `image_url` for every page they cite.
 
 ## Examples
 

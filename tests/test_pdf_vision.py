@@ -202,3 +202,14 @@ def test_a_missing_image_file_is_skipped_rather_than_raising(tmp_path):
         )
     ]
     assert rag._evidence_images(evidence) == []
+
+
+def test_pdf_page_count_reads_the_real_pages():
+    """auto mode judges text per page, so one long page and many short ones must differ."""
+    from pathlib import Path
+
+    from agentic_rag.pipeline import _pdf_page_count
+
+    pdf = Path(__file__).resolve().parents[1] / "data" / "sample_pdfs" / "auralis-quarterly-review.pdf"
+    assert _pdf_page_count(pdf) == 5
+    assert _pdf_page_count(Path("missing.pdf")) == 1

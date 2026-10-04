@@ -115,7 +115,7 @@ PDF_VISION=off
 
 `PDF_VISION=off` matters on a small instance: rendering page images costs memory and one model call per page, which is not what you want a public demo doing on someone else's tap.
 
-If you want the demo private, `API_AUTH_TOKEN` protects the API, but the console currently sends no `Authorization` header, so with a token set the console's own requests fail. The simplest honest setup for a public link is no token, the bundled sample corpus, and a spending limit on the provider account; for a private one, put an authenticating proxy in front of the service.
+If you want the demo private, set `API_AUTH_TOKEN` as a platform secret. The console asks for the token once and remembers it in that browser. For a public link the simplest setup is no token, the bundled sample corpus, and a spending limit on the provider account.
 
 ## Render, step by step
 

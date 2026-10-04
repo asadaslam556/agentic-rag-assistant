@@ -52,7 +52,8 @@ class VectorStore:
             raise RuntimeError(
                 f"Index at {self.directory} was built with embedder "
                 f"{manifest.get('embedder')!r} but the current embedder is "
-                f"{self.embedder.name!r}. Run `rag reset` and re-ingest."
+                f"{self.embedder.name!r}. Run `rag reindex` to re-embed the stored chunks, "
+                "or `rag reset --yes` and re-ingest."
             )
         try:
             self._vectors = np.load(vectors_path)

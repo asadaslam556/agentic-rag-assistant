@@ -127,6 +127,5 @@ pip install -e ".[neo4j]"          # Neo4j graph store
 
 ## Notes
 
-- The provider list in `.env.example` omits `deepseek`, which the code supports.
-- After switching `EMBEDDINGS_PROVIDER`, run `rag reindex`. `rag reset` cannot recover from the index
-  error a switched embedder causes, because it builds the pipeline (and loads the index) first.
+- After switching `EMBEDDINGS_PROVIDER`, run `rag reindex` to re-embed the stored chunks. `rag reset --yes`
+  wipes the index instead, and works even when the index no longer loads.

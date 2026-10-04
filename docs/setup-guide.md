@@ -69,7 +69,7 @@ rag chat             # interactive multi-turn session in the terminal
 ## 4. Sanity checks
 
 ```powershell
-pytest                        # 288 tests, all offline
+pytest                        # 293 tests, all offline
 ruff check src tests scripts  # lint, should be silent
 python scripts/quickcheck.py  # ingest + ask + verify in one go, prints PASS
 rag eval                      # golden set, 11/11 expected
@@ -318,8 +318,8 @@ curl -s -X POST localhost:8000/api/chat `
      -d '{"question": "What is the payload capacity of the Atlas P2?", "history": []}'
 ```
 
-The console does not send this header yet, so with a token set its own requests fail. Use the
-token for API clients, or put an authenticating proxy in front of the console.
+The console asks for the token the first time the server answers `401`, keeps it in that browser's
+local storage, and sends it on every call, page images included.
 
 `SECURITY.md` covers the rest: TLS in front, why `/api/ingest` must never
 be exposed to untrusted clients, what `/api/upload` enforces, how planted
@@ -380,7 +380,7 @@ git push -u origin main
 ```
 
 `.gitignore` keeps `.env`, `storage/`, local editor settings, and third-party
-PDFs out of the repository. CI runs on the push: lint, the full test suite on Python 3.10 and 3.12, the
+PDFs out of the repository. CI runs on the push: lint, the full test suite on Python 3.10, 3.11, and 3.12, the
 golden-set eval, and a frontend build, all without any secrets configured.
 
 ## 14. Troubleshooting

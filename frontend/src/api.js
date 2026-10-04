@@ -2,10 +2,58 @@
 // dev server proxies /api to localhost:8000, and in production the same
 // process serves both the console and the API.
 
+// When the server sets API_AUTH_TOKEN, every call but /api/health needs a
+// bearer token. The console asks for it on the first 401 and keeps it in
+// this browser only.
+const TOKEN_KEY = "rag-api-token";
+
+function readToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function askForToken() {
+  const token = (window.prompt("This server needs an API token (API_AUTH_TOKEN):") || "").trim();
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // storage blocked: the token still works for this request
+  }
+  return token;
+}
+
+function withToken(options = {}, token = readToken()) {
+  if (!token) return options;
+  return { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` } };
+}
+
+// fetch with the stored token; on 401 ask once and retry
+async function authFetch(path, options) {
+  let response = await fetch(path, withToken(options));
+  if (response.status === 401) {
+    const token = askForToken();
+    if (token) response = await fetch(path, withToken(options, token));
+  }
+  return response;
+}
+
+// Page images are protected too, and an <img> cannot send a header, so with
+// a token the image is fetched here and handed over as an object URL.
+export async function pageImageSrc(url) {
+  if (!readToken()) return url;
+  const response = await authFetch(url);
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  return URL.createObjectURL(await response.blob());
+}
+
 async function request(path, options) {
   let response;
   try {
-    response = await fetch(path, options);
+    response = await authFetch(path, options);
   } catch {
     throw new Error("Backend not reachable at /api. Start it with: rag serve");
   }
@@ -50,7 +98,7 @@ export function uploadFiles(fileList) {
 // for every event; resolves when the server sends `done`. Throws before any
 // event on network failure so callers can fall back to the non-stream API.
 export async function streamChat(question, history, onEvent) {
-  const response = await fetch("/api/chat/stream", {
+  const response = await authFetch("/api/chat/stream", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ question, history }),

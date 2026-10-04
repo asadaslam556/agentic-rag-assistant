@@ -125,8 +125,10 @@ Adding a tool means one `Tool` subclass with a `ToolSpec` (`tools/base.py`), reg
 3. **Coverage.** A branch that found nothing, and did not fail, gets one more try while the shared
    budget lasts. The retry keeps the branch index, so its steps are reported under the same part of
    the question. The console sees a `retrying` stage.
-4. **Merge.** Evidence and steps are joined in branch order. Deduplication and ranking happen later,
-   in [context assembly](#retrieval-and-context-assembly).
+4. **Merge.** Evidence and steps are joined in branch order. On a split question each branch's
+   evidence ids and call ids are made unique (`b1-e1`, `b2-e1`), because assembly keys rank fusion by
+   id and groups by call. Deduplication and ranking happen later, in
+   [context assembly](#retrieval-and-context-assembly).
 
 A single sub-question runs inline on the calling thread and emits the same events in the same order
 as the plain loop: `stage planning` first and no `decompose` event. Tests depend on that.
@@ -320,12 +322,8 @@ Pages are rendered once (`pip install -e ".[vision]"` adds the renderer) and can
 **Descriptions (`PDF_VISION`, default `auto`).** A vision-capable model describes each page, and the
 description is indexed as an ordinary chunk headed "page N (visual)". `off` never does this, `on`
 always does, and `auto` is meant to do it only when text extraction came back thin (under 220
-characters per page). It only runs when the active model can read images. Up to `VISION_MAX_PAGES`
-(20) pages are rendered at `VISION_SCALE` (2.0).
-
-> Known issue: `pipeline.py` counts pages by form-feed characters, but `loaders.py` joins PDF pages
-> with blank lines, so the page count is always 1 and `auto` compares the whole document's text
-> against 220 characters. In practice `auto` describes only PDFs with almost no extractable text.
+characters per page, counted from the PDF's real pages). It only runs when the active model can read
+images. Up to `VISION_MAX_PAGES` (20) pages are rendered at `VISION_SCALE` (2.0).
 
 **ColPali (`VISUAL_RETRIEVER=colpali`).** Page images are embedded directly, one vector per patch, and
 ranked by late interaction (MaxSim). This needs `pip install -e ".[colpali]"` (colpali-engine and
@@ -426,12 +424,6 @@ pip install -e ".[multilingual]"
 # in .env: EMBEDDINGS_PROVIDER=multilingual
 rag reindex
 ```
-
-### Known issue
-
-Evidence ids and call ids restart in every parallel branch (`agent/orchestrator.py`), and assembly
-keys rank fusion by id and groups by call id. A split question can therefore merge scores of unrelated
-evidence. The mock never splits questions, so the offline tests do not exercise it.
 
 ## Text-to-SQL
 

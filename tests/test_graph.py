@@ -252,3 +252,38 @@ def test_end_to_end_two_branches_gather_both_facts(tmp_path):
     corpus = " ".join(item.text for item in answer.evidence)
     assert "649" in corpus and "450" in corpus, "both branches contributed evidence"
     assert answer.verification.passed
+
+
+class NumberingOrchestrator:
+    """Numbers evidence the way the real loop does: e1, e2 and call ids from 1, per branch."""
+
+    def collect(self, question, on_step=None, budget=None):
+        items = []
+        for number in (1, 2):
+            item = _evidence(f"{question} fact {number}")
+            item.id = f"e{number}"
+            item.call_id = number
+            items.append(item)
+        return items, [_step()]
+
+
+def test_split_question_evidence_ids_do_not_collide_across_branches():
+    """Assembly keys rank fusion by evidence id and groups by call id."""
+    import agentic_rag.graph.runner as runner_module
+
+    original = runner_module.decompose
+    runner_module.decompose = lambda llm, question, max_branches=3: ["first part here", "second part here"]
+    try:
+        result = _runner(NumberingOrchestrator()).run("q")
+    finally:
+        runner_module.decompose = original
+
+    ids = [item.id for item in result.evidence]
+    calls = [item.call_id for item in result.evidence]
+    assert len(set(ids)) == 4, ids
+    assert calls == [1, 2, 3, 4]
+
+
+def test_single_question_keeps_its_evidence_ids():
+    result = _runner(NumberingOrchestrator()).run("one question")
+    assert [item.id for item in result.evidence] == ["e1", "e2"]

@@ -112,18 +112,23 @@ class _ConsoleFiles(StaticFiles):
         return response
 
 
-def _public_answer(answer) -> dict:
+def _public_answer(answer, page_ids: dict[str, str] | None = None) -> dict:
     """Answer payload with server filesystem paths swapped for fetchable URLs.
 
     Page evidence carries an absolute path on the machine running the API,
     which a client has no business seeing and could not read anyway.
+    `page_ids` maps an image path to its page id, because the agent loop
+    renumbers evidence ids to e1, e2 and /api/page-image looks pages up by
+    the id they were indexed under.
     """
+    page_ids = page_ids or {}
     from urllib.parse import quote
 
     payload = answer.to_dict()
     for item in payload.get("evidence", []):
         path = item.pop("image_path", "")
-        item["image_url"] = f"/api/page-image?page_id={quote(item['id'], safe='')}" if path else ""
+        page_id = page_ids.get(path, item["id"])
+        item["image_url"] = f"/api/page-image?page_id={quote(page_id, safe='')}" if path else ""
     return payload
 
 
@@ -158,6 +163,9 @@ def create_app(pipeline: AgenticRAG | None = None):
             raise HTTPException(status_code=401, detail="Missing or invalid API token.")
 
     protected = [Depends(check_auth)]
+
+    def public(answer) -> dict:
+        return _public_answer(answer, {record.image_path: record.id for record in rag.pages.records()})
 
     @app.get("/api/health")
     def health() -> dict:
@@ -281,11 +289,11 @@ def create_app(pipeline: AgenticRAG | None = None):
     @app.post("/api/ask", dependencies=protected)
     def ask(request: AskRequest) -> dict:
         """One-shot question (kept for API compatibility; /api/chat supersedes it)."""
-        return _public_answer(rag.ask(request.question))
+        return public(rag.ask(request.question))
 
     @app.post("/api/chat", dependencies=protected)
     def chat(request: ChatRequest) -> dict:
-        return _public_answer(rag.chat(request.question, history=request.history))
+        return public(rag.chat(request.question, history=request.history))
 
     @app.post("/api/chat/stream", dependencies=protected)
     def chat_stream(request: ChatRequest) -> StreamingResponse:
@@ -299,7 +307,7 @@ def create_app(pipeline: AgenticRAG | None = None):
         def worker() -> None:
             try:
                 answer = rag.chat(request.question, history=request.history, on_event=emit)
-                events.put(("answer", _public_answer(answer)))
+                events.put(("answer", public(answer)))
             except ProviderError as exc:
                 # setup problems carry their own readable fix, safe to show
                 events.put(("error", {"message": str(exc)[:500]}))
